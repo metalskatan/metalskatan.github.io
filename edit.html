@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetalSkatan's D2R Rune & Gem Tracker</title>
+    <style>
+        /* Font import */
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+        /* --- Variables --- */
+        :root {
+            --d2-bg-dark: #080808;
+            --d2-bg-medium: #1a1a1a;
+            --d2-border-color: #401010; /* Dark red border */
+            --d2-accent-red: #B80000; /* Bright red accent */
+            --d2-accent-red-darker: #660000; /* Darker red for shadows/gradients */
+            --d2-text-light: #b0b0b0; /* Light grey text */
+            --d2-text-dark: #777777; /* Dark grey text (placeholders, labels) */
+            --d2-gold: #daa520; /* Gold color for highlights */
+            --d2-rune-color: #c7b377; /* Rune text color */
+            --d2-gem-color: #aaddff; /* Gem text color */
+            --d2-highlight: #ffcc66; /* Lighter gold for runeword names */
+            --d2-rune-highlight-border: #ffd700; /* Gold border for highlighted runes */
+            --d2-rune-highlight-bg: rgba(255, 215, 0, 0.15); /* Slight gold background */
+            --d2-button-green: #4a9a4d; /* Green for 'make' buttons */
+            --d2-button-green-hover: #408042;
+            --d2-button-red: #8B0000; /* Dark red for 'reset' button */
+            --d2-button-red-hover: #a52a2a;
+            --tooltip-width: 280px;
+            --tab-inactive-bg: #2a2a2a;
+            --tab-active-bg: var(--d2-bg-medium); /* Match section background */
+            --tab-border: #444;
+            --tab-active-border: var(--d2-accent-red);
+            --focus-outline-color: var(--d2-gold); /* Outline color for focused elements */
+            --button-bg: #1f1f1f; /* Darker button background */
+            --button-border: #3a3a3a; /* Slightly lighter border for buttons */
+            --button-hover-bg: #333333;
+            --button-active-bg: #111111;
+        }
+
+        /* Basic Reset & Body */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; } /* Smooth scrolling */
+        body {
+            font-family: 'PT Serif', serif; /* Use PT Serif as base, Cinzel/Exocet for specific elements */
+            background-color: var(--d2-bg-dark);
+            color: var(--d2-text-light);
+            line-height: 1.6;
+            font-size: 16px; /* Base font size */
+        }
+
+        /* --- Focus Styles --- */
+        *:focus-visible {
+            outline: 2px solid var(--focus-outline-color);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(218, 165, 32, 0.3);
+        }
+        *:focus:not(:focus-visible) { outline: none; }
+        .inventory-item:focus-visible { outline-offset: 0px; }
+        .tab-btn:focus-visible { outline-offset: -2px; }
+
+        /* Animations */
+        @keyframes sinisterPulse { 0% { border-color: var(--d2-border-color); box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), 0 0 8px var(--d2-accent-red-darker), inset 0 0 5px rgba(102, 0, 0, 0.2); } 50% { border-color: var(--d2-accent-red); box-shadow: 0 0 35px rgba(0, 0, 0, 0.9), 0 0 20px var(--d2-accent-red), inset 0 0 10px rgba(184, 0, 0, 0.5); } 100% { border-color: var(--d2-border-color); box-shadow: 0 0 15px rgba(0, 0, 0, 0.8), 0 0 8px var(--d2-accent-red-darker), inset 0 0 5px rgba(102, 0, 0, 0.2); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes sinisterGradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Container */
+        .container {
+            max-width: 1800px; margin: 20px auto; padding: 20px;
+            background-color: rgba(5, 5, 5, 0.85); border: 2px solid var(--d2-border-color);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.9); position: relative;
+            animation: sinisterPulse 4s infinite ease-in-out; overflow: hidden;
+            border-radius: 8px;
+        }
+
+        /* Header & Decorations */
+        .header-decoration {
+            position: absolute; top: 15px; font-size: 3em;
+            background: linear-gradient(90deg, var(--d2-accent-red), var(--d2-gold), #111, var(--d2-accent-red));
+            background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+            color: transparent; animation: spin 6s linear infinite, sinisterGradient 8s ease infinite;
+            z-index: 10; font-family: sans-serif; line-height: 1;
+        }
+        #pentagram-left { left: 15px; }
+        #pentagram-right { right: 15px; }
+        #donate-link {
+            position: absolute; top: 28px; left: 65px; color: var(--d2-gold);
+            text-decoration: none; font-size: 0.9em; z-index: 11;
+            font-family: 'PT Serif', serif; transition: color 0.2s ease, text-decoration 0.2s ease;
+            padding: 2px 5px; border-radius: 3px;
+        }
+        #donate-link:hover, #donate-link:focus-visible {
+            text-decoration: underline; color: var(--d2-highlight);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        h1 {
+            font-family: 'Cinzel Decorative', cursive; text-align: center; margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8); font-size: 2.6em;
+            position: relative; z-index: 1;
+            background: linear-gradient(90deg, var(--d2-accent-red), var(--d2-gold), #111, var(--d2-accent-red));
+            background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+            color: transparent; animation: sinisterGradient 8s ease infinite; padding: 5px 0;
+        }
+
+        /* Terror Zone Tracker */
+        #terror-zone-tracker-container {
+            width: 100%;
+            height: 370px; /* Original height */
+            background-color: var(--d2-bg-medium);
+            border: 1px solid var(--d2-border-color); border-radius: 6px; padding: 10px;
+            box-shadow: inset 0 0 12px rgba(0,0,0,0.6); overflow: hidden;
+            margin-bottom: 25px; position: relative; z-index: 1;
+        }
+        #terror-zone-tracker-container iframe {
+            width: 100%; height: 100%; border: none; overflow: auto;
+            display: block; border-radius: 4px;
+        }
+
+        /* Columns */
+        .main-columns { display: flex; flex-direction: row; gap: 25px; align-items: flex-start; position: relative; z-index: 1; }
+        .main-columns > section {
+            flex: 1; background-color: var(--d2-bg-medium); border: 1px solid var(--d2-border-color);
+            border-radius: 6px; padding: 20px; box-shadow: inset 0 0 12px rgba(0,0,0,0.6);
+        }
+        #inventory-column { flex: 1.5; }
+
+        /* --- MODIFIED Section Headers --- */
+        .section-header {
+            display: flex;
+            border-bottom: 2px solid var(--d2-border-color);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            /* Use flex-direction column for easier centering of title */
+            flex-direction: column;
+            align-items: center; /* Center items horizontally */
+            gap: 15px;
+        }
+        .section-header h2 {
+            /* Keep existing font styles */
+            font-family: 'Cinzel Decorative', cursive;
+            color: var(--d2-gold);
+            font-size: 1.6em;
+            /* Remove specific margins/borders if needed */
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+            /* Add text-align center */
+            text-align: center;
+            width: 100%; /* Ensure it takes full width for centering */
+        }
+        /* --- MODIFIED Header Controls --- */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            /* Center the controls group below the title */
+            justify-content: center;
+            width: 100%; /* Allow centering */
+        }
+        .filter-controls, .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            /* Ensure they don't take full width unless needed */
+            width: auto;
+        }
+        .filter-controls label, .sort-controls label { font-size: 0.9em; color: var(--d2-text-dark); }
+        .filter-controls select, .sort-controls select {
+            background-color: var(--button-bg); /* Match button bg */
+            color: var(--d2-text-light); border: 1px solid var(--button-border); /* Match button border */
+            border-radius: 4px; padding: 5px 8px; font-size: 0.9em; font-family: inherit; cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+            appearance: none; /* Basic reset for custom arrow */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23b0b0b0' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); /* SVG arrow */
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-size: 1em 1em;
+            padding-right: 2rem; /* Space for arrow */
+        }
+        .filter-controls select:hover, .sort-controls select:hover {
+            border-color: var(--d2-accent-red); background-color: var(--button-hover-bg);
+        }
+
+        /* --- Tab Styles --- */
+        .tab-controls { display: flex; margin-bottom: 20px; border-bottom: 2px solid var(--tab-border); flex-wrap: wrap; /* Allow wrapping on small screens */ }
+        .tab-btn {
+            padding: 8px 14px; /* Original padding */
+            cursor: pointer; background-color: var(--tab-inactive-bg);
+            border: 1px solid var(--tab-border); /* Add border */
+            border-bottom: none; /* Remove bottom border */
+            color: var(--d2-text-dark); font-family: 'Cinzel Decorative', cursive;
+            font-size: 1.1em; /* Original font size */
+            margin-bottom: -2px; /* Overlap main border */
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+            border-radius: 6px 6px 0 0; outline: none;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3); /* Subtle inset shadow */
+            flex-shrink: 0; /* Prevent shrinking initially */
+        }
+        .tab-btn:hover { background-color: #3a3a3a; color: var(--d2-text-light); border-color: #555; }
+        .tab-btn.active {
+            background-color: var(--tab-active-bg); color: var(--d2-gold);
+            border-color: var(--tab-border); border-bottom-color: var(--tab-active-bg); /* Hide bottom border */
+            box-shadow: none; /* Remove inset shadow for active */
+        }
+        .tab-content { display: none; animation: fadeIn 0.4s ease-out; min-height: 300px; }
+        .tab-content.active { display: grid; } /* Applies to rune/gem lists */
+        /* New rule for cube recipe list display */
+        #cube-recipe-list.active { display: block; } /* Cube recipe uses block */
+
+        /* Rune List & Gem List Grid */
+        /* *** MODIFIED: Adjusted min width for smaller rune items *** */
+        #rune-list {
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); /* UPDATED */
+            gap: 10px; /* UPDATED */
+            margin-top: 10px;
+        }
+        #gem-list { grid-template-columns: repeat(7, 1fr); gap: 12px; margin-top: 10px; align-content: start; }
+        .gem-column { display: flex; flex-direction: column; gap: 10px; }
+
+        /* Item Styling (Common for Runes & Gems) */
+        .inventory-item {
+            background-color: #111111; border: 1px solid var(--d2-border-color);
+            /* *** MODIFIED: Adjusted padding and min-height for smaller items *** */
+            padding: 5px 6px; /* UPDATED */
+            min-height: 75px; /* UPDATED */
+            text-align: center; border-radius: 5px;
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out, background-color 0.2s ease-out;
+            cursor: default; display: flex; flex-direction: column; justify-content: space-between;
+            position: relative;
+        }
+        .inventory-item:hover {
+            transform: translateY(-3px); box-shadow: 0 6px 18px rgba(184, 0, 0, 0.7);
+            border-color: var(--d2-accent-red); background-color: #181818;
+        }
+        .item-name {
+            font-weight: bold;
+            margin-bottom: 6px; /* UPDATED */
+            font-size: 1.1em; display: flex; align-items: center;
+            justify-content: center; flex-grow: 1;
+            /* *** MODIFIED: Adjusted min-height for smaller items *** */
+            min-height: 2.8em; /* UPDATED */
+            line-height: 1.3;
+        }
+        .rune-name { color: var(--d2-rune-color); }
+        .gem-name { color: var(--d2-gem-color); }
+
+        .item-controls { display: flex; justify-content: center; align-items: center; margin-top: auto; padding-top: 6px; } /* Adjusted padding-top slightly */
+        .item-count { font-size: 1.2em; font-weight: bold; color: var(--d2-text-light); margin: 0 10px; min-width: 25px; text-align: center; }
+        /* Updated Item Button Styles */
+        .item-btn {
+            background-color: var(--button-bg); color: var(--d2-text-light); border: 1px solid var(--button-border);
+            font-weight: bold; cursor: pointer; padding: 3px 8px; font-size: 1em; border-radius: 4px;
+            transition: background-color 0.2s ease, transform 0.1s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.1s ease;
+            font-family: inherit; line-height: 1;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.05); /* Subtle 3D effect */
+        }
+        .item-btn:hover:not(:disabled) {
+            background-color: var(--button-hover-bg); border-color: var(--d2-accent-red); color: var(--d2-highlight);
+        }
+        .item-btn:active:not(:disabled) {
+            transform: scale(0.95); background-color: var(--button-active-bg);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6); /* Deeper inset shadow */
+        }
+        .item-btn.minus:hover:not(:disabled) { background-color: var(--d2-accent-red-darker); border-color: var(--d2-accent-red); color: white; }
+        .item-btn:disabled {
+             background-color: #151515; color: #555; cursor: not-allowed; opacity: 0.6; border-color: #252525; box-shadow: none;
+        }
+
+        /* Removed the Zod specific rule */
+        /* .rune-item.rune-zod { grid-column: 1 / -1; } */
+
+        /* Added rule for the wrapper containing the last three runes */
+        .last-rune-row {
+            grid-column: 1 / -1; /* Make wrapper span full width */
+            display: flex;         /* Use flexbox for centering */
+            justify-content: center; /* Center items horizontally */
+            align-items: stretch;  /* Ensure items have same height */
+            gap: 10px;             /* Match the gap in #rune-list */
+            margin-top: 10px;      /* Optional: Add space above the row */
+        }
+
+        .rune-item.rune-highlighted {
+            border-color: var(--d2-rune-highlight-border); background-color: var(--d2-rune-highlight-bg);
+            box-shadow: 0 0 10px var(--d2-rune-highlight-border);
+        }
+        /* *** UNCHANGED: Kept image height the same *** */
+        .rune-image {
+            height: 2.8em; /* KEPT ORIGINAL */
+            width: auto; vertical-align: middle; margin-right: 8px; image-rendering: pixelated; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+        }
+        .gem-image { height: 3.2em; width: auto; vertical-align: middle; margin: 0 auto; image-rendering: pixelated; display: block; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5)); }
+
+        /* Tooltip */
+        #rune-tooltip {
+            position: absolute; display: none; width: var(--tooltip-width); max-width: var(--tooltip-width);
+            background-color: rgba(5, 0, 0, 0.98); border: 1px solid var(--d2-accent-red); color: var(--d2-text-light);
+            padding: 12px 18px; border-radius: 5px; font-size: 0.95em; line-height: 1.5; z-index: 100;
+            pointer-events: none; box-shadow: 0 4px 15px rgba(139, 0, 0, 0.7); animation: fadeIn 0.15s ease-out;
+        }
+        #rune-tooltip p { margin-bottom: 5px; }
+        #rune-tooltip p:last-child { margin-bottom: 0; }
+        #rune-tooltip strong { color: var(--d2-rune-color); }
+
+        /* --- MODIFIED Search & Results --- */
+        #runeword-search, #cube-recipe-search { /* Added cube recipe search */
+            /* Keep original styles, adjust margin/width as needed */
+            width: 100%;
+            padding: 10px 12px;
+            background-color: #101010;
+            border: 1px solid var(--d2-border-color);
+            color: var(--d2-text-light);
+            border-radius: 4px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            /* Remove bottom margin if moved inside header-controls */
+            margin-bottom: 0;
+            /* Optional: set a max-width */
+            max-width: 400px;
+        }
+        #runeword-search::placeholder, #cube-recipe-search::placeholder { color: var(--d2-text-dark); } /* Added cube recipe search */
+        #runeword-search:hover, #cube-recipe-search:hover { border-color: var(--d2-accent-red); } /* Added cube recipe search */
+
+        #possible-runewords, #possible-upgrades, #cube-recipe-output { /* Added cube recipe output */
+            margin-top: 0; padding: 0; background-color: transparent; border: none; overflow-y: auto;
+            padding-right: 8px; height: 400px; scrollbar-width: thin; scrollbar-color: var(--d2-text-dark) var(--d2-bg-medium);
+        }
+        /* Apply scrollbar styles to new output list */
+        #possible-runewords::-webkit-scrollbar, #possible-upgrades::-webkit-scrollbar, #cube-recipe-output::-webkit-scrollbar { width: 8px; }
+        #possible-runewords::-webkit-scrollbar-track, #possible-upgrades::-webkit-scrollbar-track, #cube-recipe-output::-webkit-scrollbar-track { background: var(--d2-bg-medium); border-radius: 4px; }
+        #possible-runewords::-webkit-scrollbar-thumb, #possible-upgrades::-webkit-scrollbar-thumb, #cube-recipe-output::-webkit-scrollbar-thumb { background-color: var(--d2-text-dark); border-radius: 4px; border: 2px solid var(--d2-bg-medium); }
+        #possible-runewords::-webkit-scrollbar-thumb:hover, #possible-upgrades::-webkit-scrollbar-thumb:hover, #cube-recipe-output::-webkit-scrollbar-thumb:hover { background-color: var(--d2-text-light); }
+
+        /* Result List Styling */
+        .result-list { list-style: none; padding: 0; }
+        .result-list li {
+            background-color: #111111; margin-bottom: 12px; padding: 12px 18px; border-left: 5px solid var(--d2-accent-red);
+            border-radius: 4px; transition: background-color 0.25s ease, opacity 0.3s ease, border-color 0.3s ease, transform 0.15s ease-out;
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;
+            box-shadow: inset 0 0 6px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out;
+        }
+        .result-list li .content { flex-grow: 1; min-width: 0; }
+        .result-list li:hover { background-color: #282828; transform: translateX(3px); border-left-color: var(--d2-gold); }
+        .result-list li.can-make { opacity: 1; border-left-color: var(--d2-button-green); }
+        .result-list li.cannot-make { opacity: 0.7; }
+        .result-list li.cannot-make .result-name { color: var(--d2-highlight); opacity: 0.85; }
+        .result-list li.cannot-make .result-recipe { color: var(--d2-rune-color); opacity: 0.85; }
+        .result-list li.cannot-make .runeword-stats { color: #aaa; }
+        .result-list li.cannot-make .runeword-stats strong { color: var(--d2-rune-color); opacity: 0.85; }
+        .result-list li.cannot-make .gem-result-recipe { color: var(--d2-gem-color); opacity: 0.85; }
+        .result-list li.cannot-make .cube-recipe-inputs { color: var(--d2-text-light); opacity: 0.85; } /* Style for cube recipe inputs when cannot make */
+
+        .result-name { font-weight: bold; color: var(--d2-highlight); font-size: 1.15em; display: block; margin-bottom: 2px; }
+        .result-recipe, .gem-result-recipe, .cube-recipe-inputs { /* Added cube recipe inputs */
+             font-style: italic; color: var(--d2-rune-color); font-size: 0.9em; word-break: break-word; display: block; margin-bottom: 4px;
+        }
+        .gem-result-recipe { color: var(--d2-gem-color); }
+        .cube-recipe-inputs { color: var(--d2-text-light); } /* Specific color for cube recipe inputs */
+
+        .result-info { color: var(--d2-text-dark); font-size: 0.9em; margin-top: 4px; margin-bottom: 6px; }
+        .missing-runes, .missing-gem, .missing-items { /* Added missing-items */
+             font-size: 0.85em; color: var(--d2-accent-red); margin-top: 6px; margin-bottom: 6px; font-style: italic; font-weight: bold;
+        }
+        .runeword-stats, .cube-recipe-result { /* Added cube recipe result */
+             font-size: 0.9em; color: var(--d2-text-light); margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--d2-border-color); line-height: 1.45; word-wrap: break-word; white-space: pre-line;
+        }
+        .runeword-stats strong, .cube-recipe-result strong { color: var(--d2-rune-color); display: block; margin-bottom: 4px; } /* Added cube recipe result */
+        .cube-recipe-result strong { color: var(--d2-gold); } /* Specific color for cube result label */
+
+        .max-craftable { font-size: 0.9em; color: var(--d2-button-green); margin-top: 6px; font-weight: bold; }
+        .base-rune-cost { font-size: 0.85em; color: var(--d2-gold); margin-top: 6px; font-style: italic; }
+
+        /* --- Updated Button Styles --- */
+        /* Base styles for all action buttons */
+        .craft-btn, .reset-button, .toggle-button {
+            font-family: 'Cinzel Decorative', cursive; /* More thematic font */
+            padding: 6px 14px;
+            font-size: 0.95em;
+            font-weight: bold;
+            color: var(--d2-text-light);
+            background-color: var(--button-bg);
+            border: 1px solid var(--button-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.05), 0 2px 3px rgba(0,0,0,0.4); /* More pronounced 3D effect */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .craft-btn:hover:not(:disabled),
+        .reset-button:hover:not(:disabled),
+        .toggle-button:hover:not(:disabled) {
+            background-color: var(--button-hover-bg);
+            border-color: var(--d2-accent-red);
+            color: var(--d2-highlight);
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.05), 0 3px 5px rgba(0,0,0,0.5);
+        }
+        .craft-btn:active:not(:disabled),
+        .reset-button:active:not(:disabled),
+        .toggle-button:active:not(:disabled) {
+            transform: translateY(1px) scale(0.98); /* Press down effect */
+            background-color: var(--button-active-bg);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+            color: var(--d2-gold);
+        }
+        .craft-btn:disabled, .reset-button:disabled, .toggle-button:disabled {
+            background-color: #151515; border-color: #252525; color: #555;
+            cursor: not-allowed; opacity: 0.6; box-shadow: none; text-shadow: none;
+        }
+
+        /* Specific button adjustments */
+        .craft-btn { flex-shrink: 0; margin-top: 5px; align-self: center; background-color: var(--d2-button-green); border-color: #3a8a3d; color: white; }
+        .craft-btn:hover:not(:disabled) { background-color: var(--d2-button-green-hover); border-color: var(--d2-button-green); color: white; }
+        .craft-btn:active:not(:disabled) { background-color: #307032; } /* Darker green active */
+        /* Cube recipe specific button - maybe different color? */
+        .cube-recipe-btn { /* Example: Use a slightly different color */
+            background-color: #3a8a3d; /* Darker green initially */
+            border-color: #2e7030;
+        }
+        .cube-recipe-btn:hover:not(:disabled) {
+            background-color: #4a9a4d; /* Regular green on hover */
+            border-color: #3a8a3d;
+        }
+
+
+        .reset-button { display: block; margin: 25px auto 0 auto; width: fit-content; background-color: var(--d2-button-red); border-color: var(--d2-accent-red-darker); }
+        .reset-button:hover:not(:disabled) { background-color: var(--d2-button-red-hover); border-color: var(--d2-accent-red); color: white; }
+        .reset-button:active:not(:disabled) { background-color: #5c0000; } /* Darker red active */
+
+        .toggle-button { font-size: 0.85em; padding: 4px 10px; vertical-align: middle; flex-shrink: 0; }
+        .toggle-button.toggle-show-all { background-color: var(--d2-button-red); border-color: var(--d2-accent-red-darker); }
+        .toggle-button.toggle-show-all:hover:not(:disabled) { background-color: var(--d2-button-red-hover); border-color: var(--d2-accent-red); color: white; }
+        .toggle-button.toggle-show-possible { background-color: var(--d2-button-green); border-color: #3a8a3d; }
+        .toggle-button.toggle-show-possible:hover:not(:disabled) { background-color: var(--d2-button-green-hover); border-color: var(--d2-button-green); color: white; }
+
+
+        /* Responsive */
+        @media (max-width: 1100px) { #rune-tooltip { display: none !important; } }
+        @media (max-width: 900px) {
+             .main-columns { flex-direction: column; align-items: stretch; gap: 20px; }
+             .main-columns > section { max-height: none; }
+             /* Adjust all scrollable sections for mobile */
+             #possible-runewords, #possible-upgrades, #cube-recipe-output { height: 45vh; max-height: 45vh; }
+             #possible-runewords, #possible-upgrades, #cube-recipe-output { scrollbar-width: thin; scrollbar-color: var(--d2-text-dark) var(--d2-bg-medium); }
+             #possible-runewords::-webkit-scrollbar, #possible-upgrades::-webkit-scrollbar, #cube-recipe-output::-webkit-scrollbar { width: 6px; }
+             #possible-runewords::-webkit-scrollbar-thumb, #possible-upgrades::-webkit-scrollbar-thumb, #cube-recipe-output::-webkit-scrollbar-thumb { border: 1px solid var(--d2-bg-medium); }
+
+             .result-list li { flex-wrap: wrap; }
+             .craft-btn { align-self: flex-end; }
+             #inventory-column { order: -1; }
+             #gem-list { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; }
+             .gem-column { display: contents; }
+             .header-controls { justify-content: center; width: 100%; gap: 10px; }
+             .filter-controls, .sort-controls { margin-top: 8px; }
+             /* Adjust rune list for slightly smaller screens too */
+             #rune-list { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+             /* Adjust last rune row centering on smaller screens if needed */
+             .last-rune-row { flex-wrap: wrap; /* Allow wrapping if screen is very narrow */ }
+             /* --- ADDED: Style search bar in responsive --- */
+             #runeword-search, #cube-recipe-search { max-width: none; width: 90%; margin-left: auto; margin-right: auto; }
+             /* Hide non-active result columns on mobile */
+            .main-columns > section:not(#inventory-column) { display: none; } /* Hide all by default */
+            #inventory-column .tab-btn.active[data-target="rune-list"] ~ #runewords-column,
+            #inventory-column .tab-btn.active[data-target="rune-list"] ~ #upgrades-column { display: block; } /* Show rune/upgrade for Rune tab */
+            #inventory-column .tab-btn.active[data-target="gem-list"] ~ #upgrades-column { display: block; } /* Show upgrade for Gem tab */
+            #inventory-column .tab-btn.active[data-target="cube-recipe-list"] ~ #cube-recipes-column { display: block; } /* Show cube for Cube tab */
+        }
+        @media (max-width: 480px) {
+            body { font-size: 15px; }
+            h1 { font-size: 2.2em; }
+            .section-header h2 { font-size: 1.4em; }
+            .tab-btn {
+                font-size: 1em; /* UPDATED */
+                padding: 7px 10px; /* UPDATED */
+            }
+            .item-count { font-size: 1.1em; }
+            .item-btn { font-size: 0.9em; padding: 2px 6px; }
+            /* Further adjust rune list for very small screens */
+            #rune-list { grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; }
+            #gem-list { grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); }
+            /* Adjust header controls for small screens */
+            .header-controls { flex-direction: column; align-items: center; }
+            #runeword-search, #cube-recipe-search { width: 100%; margin-bottom: 10px; /* Add back margin */ }
+            .filter-controls, .sort-controls { flex-direction: column; align-items: stretch; gap: 5px; width: 90%; }
+            .filter-controls label, .sort-controls label { text-align: center; margin-bottom: 3px; }
+            .filter-controls select, .sort-controls select { width: 100%; padding-right: 2rem; /* Ensure space for arrow */ }
+            .toggle-button { width: 90%; text-align: center; margin-top: 5px; }
+            .result-list li { padding: 10px 15px; }
+            .result-name { font-size: 1.1em; }
+            .runeword-stats, .cube-recipe-result { font-size: 0.85em; } /* Added cube recipe result */
+            .craft-btn, .reset-button, .toggle-button { font-size: 0.9em; padding: 5px 12px; }
+            #donate-link { top: 24px; left: 55px; font-size: 0.8em; }
+            .header-decoration { font-size: 2.5em; top: 12px; }
+            #pentagram-left { left: 10px; }
+            #pentagram-right { right: 10px; }
+            /* Adjust Terror Zone tracker height for small screens too */
+            #terror-zone-tracker-container {
+                height: 250px; /* UPDATED */
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+         <div id="pentagram-left" class="header-decoration">★</div>
+         <a id="donate-link" href="https://forums.d2jsp.org/user.php?i=406809" target="_blank" rel="noopener noreferrer">
+             <span style="vertical-align: middle; margin-right: 4px;" aria-hidden="true">💰</span>Donate
+         </a>
+         <div id="pentagram-right" class="header-decoration">★</div>
+
+        <h1>MetalSkatan's Rune & Gem Tracker</h1>
+
+        <div id="terror-zone-tracker-container">
+            <iframe
+                src="https://d2emu.com/tz"
+                title="D2Emu Terror Zone Tracker"
+                loading="lazy" >
+                <p>Your browser does not support iframes, or d2emu.com prevents embedding.</p>
+                <p>Visit <a href="https://d2emu.com/tz" target="_blank" rel="noopener noreferrer">d2emu.com/tz</a> directly.</p>
+            </iframe>
+        </div>
+
+        <div class="main-columns">
+
+            <section id="inventory-column" aria-labelledby="inventory-heading">
+                 <div class="tab-controls" role="tablist" aria-orientation="horizontal">
+                     <button id="runes-tab-btn" class="tab-btn active" data-target="rune-list" role="tab" aria-selected="true" aria-controls="rune-list">Runes</button>
+                     <button id="gems-tab-btn" class="tab-btn" data-target="gem-list" role="tab" aria-selected="false" aria-controls="gem-list" tabindex="-1">Gems</button>
+                     <button id="cube-recipes-tab-btn" class="tab-btn" data-target="cube-recipe-list" role="tab" aria-selected="false" aria-controls="cube-recipe-list" tabindex="-1">Cube Recipes</button>
+                 </div>
+
+                 <div id="rune-list" class="tab-content active" role="tabpanel" aria-labelledby="runes-tab-btn" tabindex="0">
+                     </div>
+
+                 <div id="gem-list" class="tab-content" role="tabpanel" aria-labelledby="gems-tab-btn" hidden tabindex="0">
+                     </div>
+
+                 <div id="cube-recipe-list" class="tab-content" role="tabpanel" aria-labelledby="cube-recipes-tab-btn" hidden tabindex="0">
+                     <p style="text-align:center; padding: 20px; color: var(--d2-text-dark);">Cube recipe content will load here...</p>
+                 </div>
+
+
+                 <button id="reset-counts-btn" class="reset-button">Reset All Counts</button>
+            </section>
+
+            <section id="runewords-column" aria-labelledby="runewords-heading">
+                 <div class="section-header">
+                     <h2 id="runewords-heading">Possible Runewords</h2>
+                     <div class="header-controls">
+                         <input type="text" id="runeword-search" placeholder="Search Runewords (by Name, Rune, or Stats)..." aria-label="Search Runewords">
+                         <div class="filter-controls">
+                             <label for="runeword-item-filter">Item Type:</label>
+                             <select id="runeword-item-filter" name="runeword-item-filter">
+                                 <option value="all">All Types</option>
+                                 <option value="Axes">Axes</option>
+                                 <option value="Body Armor">Body Armor</option>
+                                 <option value="Claws">Claws</option>
+                                 <option value="Daggers">Daggers</option>
+                                 <option value="Helms">Helms</option>
+                                 <option value="Maces">Maces</option>
+                                 <option value="Missile Weapons">Missile Weapons</option>
+                                 <option value="Polearms">Polearms</option>
+                                 <option value="Scepters">Scepters</option>
+                                 <option value="Shields">Shields</option>
+                                 <option value="Staves">Staves</option>
+                                 <option value="Swords">Swords</option>
+                                 <option value="Wands">Wands</option>
+                             </select>
+                         </div>
+                         <div class="sort-controls">
+                            <label for="runeword-sort">Sort by:</label>
+                            <select id="runeword-sort" name="runeword-sort">
+                                <option value="alphabetical">Alphabetical</option>
+                                <option value="level">Level Req.</option>
+                                <option value="num_runes">Num. Runes</option>
+                            </select>
+                         </div>
+                         <button id="toggle-all-runewords-btn" class="toggle-button" aria-controls="possible-runewords">Show All</button>
+                     </div>
+                 </div>
+                 <div id="possible-runewords" aria-live="polite">
+                     <ul class="result-list" id="runeword-output">
+                         </ul>
+                </div>
+            </section>
+
+            <section id="upgrades-column" aria-labelledby="upgrades-heading">
+                 <div class="section-header">
+                     <h2 id="upgrades-title">Possible Rune Upgrades</h2> <div class="header-controls">
+                         <button id="toggle-all-upgrades-btn" class="toggle-button" aria-controls="possible-upgrades">Show All</button>
+                     </div>
+                 </div>
+                 <div id="possible-upgrades" aria-live="polite">
+                     <ul class="result-list" id="upgrade-output">
+                         </ul>
+                </div>
+            </section>
+
+            <section id="cube-recipes-column" aria-labelledby="cube-recipes-heading">
+                 <div class="section-header">
+                     <h2 id="cube-recipes-heading">Cube Recipes</h2>
+                     <div class="header-controls">
+                         <input type="text" id="cube-recipe-search" placeholder="Search Recipes (by Name, Input, or Output)..." aria-label="Search Cube Recipes">
+                         <div class="filter-controls">
+                             <label for="cube-recipe-type-filter">Recipe Type:</label>
+                             <select id="cube-recipe-type-filter" name="cube-recipe-type-filter">
+                                 <option value="all">All Types</option>
+                                 </select>
+                         </div>
+                         <button id="toggle-all-cube-recipes-btn" class="toggle-button toggle-show-all" aria-controls="cube-recipe-output">Show All</button> </div>
+                 </div>
+                 <div id="cube-recipe-output" aria-live="polite">
+                     <ul class="result-list" id="cube-recipe-display">
+                         </ul>
+                </div>
+            </section>
+
+
+        </div>
+
+        <div id="rune-tooltip" role="tooltip" aria-hidden="true"></div>
+    </div>
+
+    <script>
+    // Wrap entire script in an IIFE to avoid polluting global scope
+    (function() {
+        'use strict'; // Enable strict mode
+
+        // --- DATA ARRAYS ---
+        // (Rune data, image URLs, runeword data, upgrade recipes, gem data remain the same)
+        const runesData = [ { name: 'El', level: 1, weaponEffect: '+50 AR, +1 Light Radius', armorHelmEffect: '+15 Defense, +1 Light Radius', shieldEffect: '+15 Defense, +1 Light Radius' }, { name: 'Eld', level: 2, weaponEffect: '+75% Dmg vs Undead, +50 AR vs Undead', armorHelmEffect: '15% Slower Stamina Drain', shieldEffect: '7% Increased Block Chance' }, { name: 'Tir', level: 3, weaponEffect: '+2 Mana After Each Kill', armorHelmEffect: '+2 Mana After Each Kill', shieldEffect: '+2 Mana After Each Kill' }, { name: 'Nef', level: 4, weaponEffect: 'Knockback', armorHelmEffect: '+30 Defense vs Missile', shieldEffect: '+30 Defense vs Missile' }, { name: 'Eth', level: 5, weaponEffect: '-25% Target Defense', armorHelmEffect: 'Regenerate Mana 15%', shieldEffect: 'Regenerate Mana 15%' }, { name: 'Ith', level: 6, weaponEffect: '+9 Max Damage', armorHelmEffect: '15% Dmg Taken Goes to Mana', shieldEffect: '15% Dmg Taken Goes to Mana' }, { name: 'Tal', level: 7, weaponEffect: '+75 Poison Dmg / 5s', armorHelmEffect: 'Poison Resist +30%', shieldEffect: 'Poison Resist +35%' }, { name: 'Ral', level: 8, weaponEffect: '+5-30 Fire Damage', armorHelmEffect: 'Fire Resist +30%', shieldEffect: 'Fire Resist +35%' }, { name: 'Ort', level: 9, weaponEffect: '+1-50 Lightning Damage', armorHelmEffect: 'Lightning Resist +30%', shieldEffect: 'Lightning Resist +35%' }, { name: 'Thul', level: 10, weaponEffect: '+3-14 Cold Damage (3s)', armorHelmEffect: 'Cold Resist +30%', shieldEffect: 'Cold Resist +35%' }, { name: 'Amn', level: 11, weaponEffect: '7% Life Leech', armorHelmEffect: 'Attacker Takes Dmg of 14', shieldEffect: 'Attacker Takes Dmg of 14' }, { name: 'Sol', level: 12, weaponEffect: '+9 Min Damage', armorHelmEffect: 'Damage Reduced By 7', shieldEffect: 'Damage Reduced By 7' }, { name: 'Shael', level: 13, weaponEffect: '+20% IAS', armorHelmEffect: '+20% FHR', shieldEffect: '+20% FBR' }, { name: 'Dol', level: 14, weaponEffect: 'Hit Causes Monster To Flee 25%', armorHelmEffect: 'Replenish Life +7', shieldEffect: 'Replenish Life +7' }, { name: 'Hel', level: 15, weaponEffect: 'Requirements -20%', armorHelmEffect: 'Requirements -15%', shieldEffect: 'Requirements -15%' }, { name: 'Io', level: 16, weaponEffect: '+10 Vitality', armorHelmEffect: '+10 Vitality', shieldEffect: '+10 Vitality' }, { name: 'Lum', level: 17, weaponEffect: '+10 Energy', armorHelmEffect: '+10 Energy', shieldEffect: '+10 Energy' }, { name: 'Ko', level: 18, weaponEffect: '+10 Dexterity', armorHelmEffect: '+10 Dexterity', shieldEffect: '+10 Dexterity' }, { name: 'Fal', level: 19, weaponEffect: '+10 Strength', armorHelmEffect: '+10 Strength', shieldEffect: '+10 Strength' }, { name: 'Lem', level: 20, weaponEffect: '75% Extra Gold', armorHelmEffect: '50% Extra Gold', shieldEffect: '50% Extra Gold' }, { name: 'Pul', level: 21, weaponEffect: '+75% Dmg vs Demons, +100 AR vs Demons', armorHelmEffect: '+30% Enhanced Defense', shieldEffect: '+30% Enhanced Defense' }, { name: 'Um', level: 22, weaponEffect: '25% Chance Open Wounds', armorHelmEffect: 'All Resist +15', shieldEffect: 'All Resist +22' }, { name: 'Mal', level: 23, weaponEffect: 'Prevent Monster Heal', armorHelmEffect: 'Magic Damage Reduced By 7', shieldEffect: 'Magic Damage Reduced By 7' }, { name: 'Ist', level: 24, weaponEffect: '30% MF', armorHelmEffect: '25% MF', shieldEffect: '25% MF' }, { name: 'Gul', level: 25, weaponEffect: '+20% Bonus AR', armorHelmEffect: '+5% Max Poison Resist', shieldEffect: '+5% Max Poison Resist' }, { name: 'Vex', level: 26, weaponEffect: '7% Mana Leech', armorHelmEffect: '+5% Max Fire Resist', shieldEffect: '+5% Max Fire Resist' }, { name: 'Ohm', level: 27, weaponEffect: '+50% Enhanced Damage', armorHelmEffect: '+5% Max Cold Resist', shieldEffect: '+5% Max Cold Resist' }, { name: 'Lo', level: 28, weaponEffect: '20% Deadly Strike', armorHelmEffect: '+5% Max Lightning Resist', shieldEffect: '+5% Max Lightning Resist' }, { name: 'Sur', level: 29, weaponEffect: 'Hit Blinds Target', armorHelmEffect: '+5% Max Mana', shieldEffect: '+50 Mana' }, { name: 'Ber', level: 30, weaponEffect: '20% Crushing Blow', armorHelmEffect: 'Damage Reduced By 8%', shieldEffect: 'Damage Reduced By 8%' }, { name: 'Jah', level: 31, weaponEffect: 'Ignore Target Defense', armorHelmEffect: '+5% Max Life', shieldEffect: '+50 Life' }, { name: 'Cham', level: 32, weaponEffect: 'Freeze Target +3', armorHelmEffect: 'Cannot Be Frozen', shieldEffect: 'Cannot Be Frozen' }, { name: 'Zod', level: 33, weaponEffect: 'Indestructible', armorHelmEffect: 'Indestructible', shieldEffect: 'Indestructible' } ];
+        const runeImageUrls = { 'El': 'https://www.purediablo.com/wp-content/uploads/2021/04/el_rune.png.webp', 'Eld': 'https://www.purediablo.com/wp-content/uploads/2021/04/eld_rune.png.webp', 'Tir': 'https://www.purediablo.com/wp-content/uploads/2021/04/tir_rune.png.webp', 'Nef': 'https://www.purediablo.com/wp-content/uploads/2021/04/nef_rune.png.webp', 'Eth': 'https://www.purediablo.com/wp-content/uploads/2021/04/eth_rune.png.webp', 'Ith': 'https://www.purediablo.com/wp-content/uploads/2021/04/ith_rune.png.webp', 'Tal': 'https://www.purediablo.com/wp-content/uploads/2021/04/tal_rune.png.webp', 'Ral': 'https://www.purediablo.com/wp-content/uploads/2021/04/ral_rune.png.webp', 'Ort': 'https://www.purediablo.com/wp-content/uploads/2021/04/ort_rune.png.webp', 'Thul': 'https://www.purediablo.com/wp-content/uploads/2021/04/thul_rune.png.webp', 'Amn': 'https://www.purediablo.com/wp-content/uploads/2021/04/amn_rune.png.webp', 'Sol': 'https://www.purediablo.com/wp-content/uploads/2021/04/sol_rune.png.webp', 'Shael': 'https://www.purediablo.com/wp-content/uploads/2021/04/shael_rune.png.webp', 'Dol': 'https://www.purediablo.com/wp-content/uploads/2021/04/dol_rune.png.webp', 'Hel': 'https://www.purediablo.com/wp-content/uploads/2021/04/hel_rune.png.webp', 'Io': 'https://www.purediablo.com/wp-content/uploads/2021/04/io_rune.png.webp', 'Lum': 'https://www.purediablo.com/wp-content/uploads/2021/04/lum_rune.png.webp', 'Ko': 'https://www.purediablo.com/wp-content/uploads/2021/04/ko_rune.png.webp', 'Fal': 'https://www.purediablo.com/wp-content/uploads/2021/04/fal_rune.png.webp', 'Lem': 'https://www.purediablo.com/wp-content/uploads/2021/04/lem_rune.png.webp', 'Pul': 'https://www.purediablo.com/wp-content/uploads/2021/04/pul_rune.png.webp', 'Um': 'https://www.purediablo.com/wp-content/uploads/2021/04/um_rune.png.webp', 'Mal': 'https://www.purediablo.com/wp-content/uploads/2021/04/mal_rune.png.webp', 'Ist': 'https://www.purediablo.com/wp-content/uploads/2021/04/ist_rune.png.webp', 'Gul': 'https://www.purediablo.com/wp-content/uploads/2021/04/gul_rune.png.webp', 'Vex': 'https://www.purediablo.com/wp-content/uploads/2021/04/vex_rune.png.webp', 'Ohm': 'https://www.purediablo.com/wp-content/uploads/2021/04/ohm_rune.png.webp', 'Lo': 'https://www.purediablo.com/wp-content/uploads/2021/04/lo_rune.png.webp', 'Sur': 'https://www.purediablo.com/wp-content/uploads/2021/04/sur_rune.png.webp', 'Ber': 'https://www.purediablo.com/wp-content/uploads/2021/04/ber_rune.png.webp', 'Jah': 'https://www.purediablo.com/wp-content/uploads/2021/04/jah_rune.png.webp', 'Cham': 'https://www.purediablo.com/wp-content/uploads/2021/04/cham_rune.png.webp', 'Zod': 'https://www.purediablo.com/wp-content/uploads/2021/04/zod_rune.png.webp' };
+        const runewordsData = [
+          { name: "Ancient's Pledge", runes: ['Ral', 'Ort', 'Tal'], itemTypes: 'Shields (3 Sockets)', info: 'LvL 21', stats: '+50% Enhanced Defense<br>Cold Resist +43%<br>Fire Resist +48%<br>Lightning Resist +48%<br>Poison Resist +48%<br>10% Damage Taken Goes To Mana' },
+          { name: "Beast", runes: ['Ber', 'Tir', 'Um', 'Mal', 'Lum'], itemTypes: 'Axes/Scepters/Hammers (5 Sockets)', info: 'LvL 63', stats: 'Level 9 Fanaticism Aura When Equipped<br>+40% Increased Attack Speed<br>+240-270% Enhanced Damage<br>20% Chance of Crushing Blow<br>25% Chance of Open Wounds<br>+3 To Werebear<br>+3 To Lycanthropy<br>Prevent Monster Heal<br>+25-40 To Strength<br>+10 To Energy<br>+2 Mana After Each Kill<br>Level 13 Summon Grizzly (5 Charges)' },
+          { name: "Black", runes: ['Thul', 'Io', 'Nef'], itemTypes: 'Clubs/Hammers/Maces (3 Sockets)', info: 'LvL 35', stats: '+120% Enhanced Damage<br>+40% Increased Attack Speed<br>+200 To Attack Rating<br>Adds 3-14 Cold Damage - 3 Second Duration<br>15% Increased Attack Speed<br>40% Chance of Crushing Blow<br>Knockback<br>+10 To Vitality<br>Magic Damage Reduced By 2<br>Level 4 Corpse Explosion (12 Charges)' },
+          { name: "Bone", runes: ['Sol', 'Um', 'Um'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 47', stats: '15% Chance To Cast level 10 Bone Armor When Struck<br>15% Chance To Cast level 10 Bone Spear On Striking<br>+2 To Necromancer Skill Levels<br>+100-150 To Mana<br>All Resistances +30<br>Damage Reduced By 7' },
+          { name: "Bramble", runes: ['Ral', 'Ohm', 'Sur', 'Eth'], itemTypes: 'Body Armor (4 Sockets)', info: 'LvL 61', stats: 'Level 15-21 Thorns Aura When Equipped<br>+50% Faster Hit Recovery<br>+25-50% To Poison Skill Damage<br>+300 Defense<br>Increase Maximum Mana 5%<br>Regenerate Mana 15%<br>+5% To Maximum Cold Resist<br>Fire Resist +30%<br>Poison Resist +100%<br>+13 Life After Each Kill<br>Level 13 Spirit of Barbs (33 Charges)' },
+          { name: "Brand", runes: ['Jah', 'Lo', 'Mal', 'Gul'], itemTypes: 'Missile Weapons (4 Sockets)', info: 'LvL 65', stats: '35% Chance To Cast Level 14 Amplify Damage When Struck<br>100% Chance To Cast Level 18 Bone Spear On Striking<br>+260-340% Enhanced Damage<br>Ignore Target\'s Defense<br>20% Bonus To Attack Rating<br>+280-330% Damage To Demons<br>20% Deadly Strike<br>Prevent Monster Heal<br>Knockback<br>Fires Explosive Arrows or Bolts (Level 15)' },
+          { name: "Breath of the Dying", runes: ['Vex', 'Hel', 'El', 'Eld', 'Zod', 'Eth'], itemTypes: 'Weapons (6 Sockets)', info: 'LvL 69', stats: '50% Chance To Cast Level 20 Poison Nova When You Kill An Enemy<br>Indestructible<br>+60% Increased Attack Speed<br>+350-400% Enhanced Damage<br>+200% Damage To Undead<br>-25% Target Defense<br>+50 To Attack Rating<br>+50 To Attack Rating Against Undead<br>7% Mana Stolen Per Hit<br>12-15% Life Stolen Per Hit<br>Prevent Monster Heal<br>+30 To All Attributes<br>+1 To Light Radius<br>Requirements -20%' },
+          { name: "Bulwark", runes: ['Shael', 'Io', 'Sol'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 35', stats: '+20% Faster Hit Recovery<br>+4-6% Life stolen per hit<br>+75-100% Enhanced Defense<br>+10 to Vitality<br>Increase Maximum Life 5%<br>Replenish Life +30<br>Damage Reduced by 7<br>Physical Damage Received Reduced by 10-15%' },
+          { name: "Call To Arms", runes: ['Amn', 'Ral', 'Mal', 'Ist', 'Ohm'], itemTypes: 'Weapons (5 Sockets)', info: 'LvL 57', stats: '+1 To All Skills<br>+40% Increased Attack Speed<br>+250-290% Enhanced Damage<br>Adds 5-30 Fire Damage<br>7% Life Stolen Per Hit<br>+2-6 To Battle Command<br>+1-6 To Battle Orders<br>+1-4 To Battle Cry<br>Prevent Monster Heal<br>Replenish Life +12<br>30% Better Chance of Getting Magic Items' },
+          { name: "Chains of Honor", runes: ['Dol', 'Um', 'Ber', 'Ist'], itemTypes: 'Body Armor (4 Sockets)', info: 'LvL 63', stats: '+2 To All Skills<br>+200% Damage To Demons<br>+100% Damage To Undead<br>8% Life Stolen Per Hit<br>+70% Enhanced Defense<br>+20 To Strength<br>Replenish Life +7<br>All Resistances +65<br>Damage Reduced By 8%<br>25% Better Chance of Getting Magic Items' },
+          { name: "Chaos", runes: ['Fal', 'Ohm', 'Um'], itemTypes: 'Claws (3 Sockets)', info: 'LvL 57', stats: '9% Chance To Cast Level 11 Frozen Orb On Striking<br>11% Chance To Cast Level 9 Charged Bolt On Striking<br>+35% Increased Attack Speed<br>+290-340% Enhanced Damage<br>Adds 216-471 Magic Damage<br>25% Chance of Open Wounds<br>+1 To Whirlwind<br>+10 To Strength<br>+15 Life After Each Demon Kill' },
+          { name: "Crescent Moon", runes: ['Shael', 'Um', 'Tir'], itemTypes: 'Axes/Swords/Polearms (3 Sockets)', info: 'LvL 47', stats: '10% Chance To Cast Level 17 Chain Lightning On Striking<br>7% Chance To Cast Level 13 Static Field On Striking<br>+20% Increased Attack Speed<br>+180-220% Enhanced Damage<br>Ignore Target\'s Defense<br>-35% To Enemy Lightning Resistance<br>25% Chance of Open Wounds<br>+9-11 Magic Absorb<br>+2 Mana After Each Kill<br>Level 18 Summon Spirit Wolf (30 Charges)' },
+          { name: "Cure", runes: ['Shael', 'Io', 'Tal'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 35', stats: 'Level 1 Cleansing Aura when equipped<br>+20% Faster Hit Recovery<br>+75-100% Enhanced Defense<br>+10 to Vitality<br>Increase Maximum Life 5%<br>Poison Resist +40-60%<br>Poison Length Reduced by 50%' },
+          { name: "Death", runes: ['Hel', 'El', 'Vex', 'Ort', 'Gul'], itemTypes: 'Swords/Axes (5 Sockets)', info: 'LvL 55', stats: '100% Chance To Cast Level 44 Chain Lightning When You Die<br>25% Chance To Cast Level 18 Glacial Spike On Attack<br>Indestructible<br>+300-385% Enhanced Damage<br>20% Bonus To Attack Rating<br>+50 To Attack Rating<br>Adds 1-50 Lightning Damage<br>7% Mana Stolen Per Hit<br>50% Chance of Crushing Blow<br>+(0.5*Clvl)% Deadly Strike (Based on Character Level)<br>+1 To Light Radius<br>Level 22 Blood Golem (15 Charges)<br>Requirements -20%' },
+          { name: "Delirium", runes: ['Lem', 'Ist', 'Io'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 51', stats: '1% Chance To Cast Level 50 Delirium When Struck<br>6% Chance To Cast Level 14 Mind Blast When Struck<br>14% Chance To Cast Level 13 Terror When Struck<br>11% Chance To Cast Level 18 Confuse On Striking<br>+2 To All Skills<br>+261 Defense<br>+10 To Vitality<br>50% Extra Gold From Monsters<br>25% Better Chance of Getting Magic Items<br>Level 17 Attract (60 Charges)' },
+          { name: "Destruction", runes: ['Vex', 'Lo', 'Ber', 'Jah', 'Ko'], itemTypes: 'Polearms/Swords (5 Sockets)', info: 'LvL 65', stats: '23% Chance To Cast Level 12 Volcano On Striking<br>5% Chance To Cast Level 23 Molten Boulder On Striking<br>100% Chance To Cast level 45 Meteor When You Die<br>15% Chance To Cast Level 22 Nova On Attack<br>+350% Enhanced Damage<br>Ignore Target\'s Defense<br>Adds 100-180 Magic Damage<br>7% Mana Stolen Per Hit<br>20% Chance Of Crushing Blow<br>20% Deadly Strike<br>Prevent Monster Heal<br>+10 To Dexterity' },
+          { name: "Doom", runes: ['Hel', 'Ohm', 'Um', 'Lo', 'Cham'], itemTypes: 'Axes/Polearms/Hammers (5 Sockets)', info: 'LvL 67', stats: '5% Chance To Cast Level 18 Volcano On Striking<br>Level 12 Holy Freeze Aura When Equipped<br>+2 To All Skills<br>+45% Increased Attack Speed<br>+330-370% Enhanced Damage<br>-40-60% To Enemy Cold Resistance<br>20% Deadly Strike<br>25% Chance of Open Wounds<br>Prevent Monster Heal<br>Freezes Target +3<br>Requirements -20%' },
+          { name: "Dragon", runes: ['Sur', 'Lo', 'Sol'], itemTypes: 'Body Armor/Shields (3 Sockets)', info: 'LvL 61', stats: '20% Chance To Cast Level 18 Venom When Struck<br>12% Chance To Cast Level 15 Hydra On Striking<br>Level 14 Holy Fire Aura When Equipped<br>+360 Defense<br>+230 Defense Vs. Missile<br>+3-5 To All Attributes<br>+(0.375*Clvl)% To Maximum Lightning Resist (Based on Character Level)<br>Increase Maximum Mana 5% (Armor Only)<br>+50 To Mana (Shields Only)<br>+5% To Maximum Lightning Resist<br>Damage Reduced By 7' },
+          { name: "Dream", runes: ['Io', 'Jah', 'Pul'], itemTypes: 'Helms/Shields (3 Sockets)', info: 'LvL 65', stats: '10% Chance To Cast Level 15 Confuse When Struck<br>Level 15 Holy Shock Aura When Equipped<br>+20-30% Faster Hit Recovery<br>+30% Enhanced Defense<br>+150-220 Defense<br>+10 To Vitality<br>Increase Maximum Life 5% (Helms Only)<br>+50 To Life (Shields Only)<br>+0.625*Clvl To Mana (Based On Character Level)<br>All Resistances +5-20<br>12-25% Better Chance of Getting Magic Items' },
+          { name: "Duress", runes: ['Shael', 'Um', 'Thul'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 47', stats: '+40% Faster Hit Recovery<br>+10-20% Enhanced Damage<br>Adds 37-133 Cold Damage<br>15% Chance of Crushing Blow<br>33% Chance of Open Wounds<br>+150-200% Enhanced Defense<br>-20% Slower Stamina Drain<br>Cold Resist +45%<br>Lightning Resist +15%<br>Fire Resist +15%<br>Poison Resist +15%' },
+          { name: "Edge", runes: ['Tir', 'Tal', 'Amn'], itemTypes: 'Missile Weapons (3 Sockets)', info: 'LvL 25', stats: 'Level 15 Thorns Aura When Equipped<br>+35% Increased Attack Speed<br>+320-380% Damage To Demons<br>+280% Damage To Undead<br>+75 Poison Damage Over 5 Seconds<br>7% Life Stolen Per Hit<br>Prevent Monster Heal<br>+5-10 To All Attributes<br>+2 To Mana After Each Kill<br>Reduces All Vendor Prices 15%<br>Level 15 Thorns Aura when equipped' },
+          { name: "Enigma", runes: ['Jah', 'Ith', 'Ber'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 65', stats: '+1 To Teleport<br>+2 To All Skills<br>+45% Faster Run/Walk<br>+750-775 Defense<br>+(0.75*Clvl) To Strength (Based On Character Level)<br>Increase Maximum Life 5%<br>Damage Reduced By 8%<br>+14 Life After Each Kill<br>15% Damage Taken Goes To Mana<br>+(1*Clvl)% Better Chance of Getting Magic Items (Based On Character Level)' },
+          { name: "Enlightenment", runes: ['Pul', 'Ral', 'Sol'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 45', stats: '5% Chance To Cast Level 15 Blaze When Struck<br>5% Chance To Cast level 15 Fire Ball On Striking<br>+2 To Sorceress Skill Levels<br>+1 To Warmth<br>+30% Enhanced Defense<br>Fire Resist +30%<br>Damage Reduced By 7' },
+          { name: "Eternity", runes: ['Amn', 'Ber', 'Ist', 'Sol', 'Sur'], itemTypes: 'Melee Weapons (5 Sockets)', info: 'LvL 63', stats: 'Indestructible<br>+260-310% Enhanced Damage<br>+9 To Minimum Damage<br>7% Life Stolen Per Hit<br>20% Chance of Crushing Blow<br>Hit Blinds Target<br>Slows Target By 33%<br>Regenerate Mana 16%<br>Replenish Life +16<br>Cannot Be Frozen<br>30% Better Chance Of Getting Magic Items<br>Level 8 Revive (88 Charges)' },
+          { name: "Exile", runes: ['Vex', 'Ohm', 'Ist', 'Dol'], itemTypes: 'Paladin Shields (4 Sockets)', info: 'LvL 57', stats: '15% Chance To Cast Level 5 Life Tap On Striking<br>Level 13-16 Defiance Aura When Equipped<br>+2 To Offensive Auras (Paladin Only)<br>+30% Faster Block Rate<br>Freezes Target<br>+220-260% Enhanced Defense<br>Replenish Life +7<br>+5% To Maximum Cold Resist<br>+5% To Maximum Fire Resist<br>25% Better Chance Of Getting Magic Items<br>Repairs 1 Durability in 4 Seconds' },
+          { name: "Faith", runes: ['Ohm', 'Jah', 'Lem', 'Eld'], itemTypes: 'Missile Weapons (4 Sockets)', info: 'LvL 65', stats: 'Level 12-15 Fanaticism Aura When Equipped<br>+1-2 To All Skills<br>+330% Enhanced Damage<br>Ignore Target\'s Defense<br>300% Bonus To Attack Rating<br>+75% Damage To Undead<br>+50 To Attack Rating Against Undead<br>+120 Fire Damage<br>All Resistances +15<br>10% Reanimate As: Returned<br>75% Extra Gold From Monsters' },
+          { name: "Famine", runes: ['Fal', 'Ohm', 'Ort', 'Jah'], itemTypes: 'Axes/Hammers (4 Sockets)', info: 'LvL 65', stats: '+30% Increased Attack Speed<br>+320-370% Enhanced Damage<br>Ignore Target\'s Defense<br>Adds 180-200 Magic Damage<br>Adds 50-200 Fire Damage<br>Adds 51-250 Lightning Damage<br>Adds 50-200 Cold Damage<br>12% Life Stolen Per Hit<br>Prevent Monster Heal<br>+10 To Strength' },
+          { name: "Flickering Flame", runes: ['Nef', 'Pul', 'Vex'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 55', stats: 'Level 4-8 Resist Fire Aura When Equipped<br>+3 To Fire Skills<br>+30% Faster Hit Recovery<br>-10-15% To Enemy Fire Resistance<br>+30% Enhanced Defense<br>+30 Defense Vs. Missile<br>+50-75 To Mana<br>Half Freeze Duration<br>+5% To Maximum Fire Resist<br>Poison Length Reduced by 50%' },
+          { name: "Fortitude", runes: ['El', 'Sol', 'Dol', 'Lo'], itemTypes: 'Weapons/Body Armor (4 Sockets)', info: 'LvL 59', stats: '20% Chance To Cast Level 15 Chilling Armor when Struck<br>+25% Faster Cast Rate<br>+300% Enhanced Damage (Weapon) / +200% Enhanced Defense (Armor)<br>+15 Defense (Weapon) / + (1-1.5 Per Character Level) +1-148.5 To Life (Based On Character Level) (Armor)<br>Replenish Life +7<br>+5% To Maximum Lightning Resist<br>All Resistances +25-30<br>Damage Reduced By 7<br>12% Damage Taken Goes To Mana<br>+1 To Light Radius' },
+          { name: "Fury", runes: ['Jah', 'Gul', 'Eth'], itemTypes: 'Melee Weapons (3 Sockets)', info: 'LvL 65', stats: '+209% Enhanced Damage<br>40% Increased Attack Speed<br>Prevent Monster Heal<br>66% Chance Of Open Wounds<br>33% Deadly Strike<br>Ignore Target\'s Defense<br>-25% Target Defense<br>20% Bonus To Attack Rating<br>6% Life Stolen Per Hit<br>+5 To Frenzy (Barbarian Only)' },
+          { name: "Gloom", runes: ['Fal', 'Um', 'Pul'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 47', stats: '15% Chance To Cast Level 3 Dim Vision When Struck<br>+10% Faster Hit Recovery<br>+200-260% Enhanced Defense<br>+10 To Strength<br>All Resistances +45<br>Half Freeze Duration<br>5% Damage Taken Goes To Mana<br>-3 To Light Radius' },
+          { name: "Grief", runes: ['Eth', 'Tir', 'Lo', 'Mal', 'Ral'], itemTypes: 'Swords/Axes (5 Sockets)', info: 'LvL 59', stats: '35% Chance To Cast Level 15 Venom On Striking<br>+30-40% Increased Attack Speed<br>Damage +340-400<br>Ignore Target\'s Defense<br>-25% Target Defense<br>+(1.875*Clvl)% Damage To Demons (Based on Character Level)<br>Adds 5-30 Fire Damage<br>-20-25% To Enemy Poison Resistance<br>20% Deadly Strike<br>Prevent Monster Heal<br>+2 To Mana After Each Kill<br>+10-15 Life After Each Kill' },
+          { name: "Ground", runes: ['Shael', 'Io', 'Ort'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 35', stats: '+20% Faster Hit Recovery<br>+75-100% Enhanced Defense<br>+10 to Vitality<br>Increase Maximum Life 5%<br>Lightning Resist +40-60%<br>Lightning Absorb +10-15%' },
+          { name: "Hand of Justice", runes: ['Sur', 'Cham', 'Amn', 'Lo'], itemTypes: 'Weapons (4 Sockets)', info: 'LvL 67', stats: '100% Chance To Cast Level 36 Blaze When You Level-Up<br>100% Chance To Cast Level 48 Meteor When You Die<br>Level 16 Holy Fire Aura When Equipped<br>+33% Increased Attack Speed<br>+280-330% Enhanced Damage<br>Ignore Target\'s Defense<br>7% Life Stolen Per Hit<br>-20% To Enemy Fire Resistance<br>20% Deadly Strike<br>Hit Blinds Target<br>Freezes Target +3' },
+          { name: "Harmony", runes: ['Tir', 'Ith', 'Sol', 'Ko'], itemTypes: 'Missile Weapons (4 Sockets)', info: 'LvL 39', stats: 'Level 10 Vigor Aura When Equipped<br>+200-275% Enhanced Damage<br>+9 To Minimum Damage<br>+9 To Maximum Damage<br>Adds 55-160 Lightning Damage<br>Adds 55-160 Fire Damage<br>Adds 55-160 Cold Damage<br>+2-6 To Valkyrie<br>+10 To Dexterity<br>Regenerate Mana 20%<br>+2 To Mana After Each Kill<br>+2 To Light Radius<br>Level 20 Revive (25 Charges)' },
+          { name: "Heart of the Oak", runes: ['Ko', 'Vex', 'Pul', 'Thul'], itemTypes: 'Staves/Maces (4 Sockets)', info: 'LvL 55', stats: '+3 To All Skills<br>+40% Faster Cast Rate<br>+75% Damage To Demons<br>+100 To Attack Rating Against Demons<br>Adds 3-14 Cold Damage<br>7% Mana Stolen Per Hit<br>+10 To Dexterity<br>Replenish Life +20<br>Increase Maximum Mana 15%<br>All Resistances +30-40<br>Level 4 Oak Sage (25 Charges)<br>Level 14 Raven (60 Charges)' },
+          { name: "Hearth", runes: ['Shael', 'Io', 'Thul'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 35', stats: '+20% Faster Hit Recovery<br>+75-100% Enhanced Defense<br>+10 to Vitality<br>Increase Maximum Life 5%<br>Cold Resist +40-60%<br>Cold Absorb +10-15%<br>Cannot be Frozen' },
+          { name: "Holy Thunder", runes: ['Eth', 'Ral', 'Ort', 'Tal'], itemTypes: 'Scepters (4 Sockets)', info: 'LvL 21', stats: '+60% Enhanced Damage<br>+10 To Maximum Damage<br>-25% Target Defense<br>Adds 5-30 Fire Damage<br>Adds 21-110 Lightning Damage<br>+75 Poison Damage Over 5 Seconds<br>+3 To Holy Shock (Paladin Only)<br>+5% To Maximum Lightning Resist<br>Lightning Resist +60%<br>Level 7 Chain Lightning (60 Charges)' },
+          { name: "Honor", runes: ['Amn', 'El', 'Ith', 'Tir', 'Sol'], itemTypes: 'Melee Weapons (5 Sockets)', info: 'LvL 27', stats: '+1 To All Skills<br>+160% Enhanced Damage<br>+9 To Minimum Damage<br>+9 To Maximum Damage<br>+250 To Attack Rating<br>7% Life Stolen Per Hit<br>Replenish Life +10<br>+10 To Strength<br>+1 To Light Radius<br>+2 To Mana After Each Kill' },
+          { name: "Hustle", runes: ['Shael', 'Ko', 'Eld'], itemTypes: 'Weapons/Body Armor (3 Sockets)', info: 'LvL 39', stats: '(Weapon) 5% Chance to cast level 1 Burst of Speed on striking<br>Level 1 Fanaticism Aura<br>+30% Increased Attack Speed<br>+180-200% Enhanced Damage<br>+75% Damage to Undead<br>+50 to Attack Rating against Undead<br>+10 to Dexterity<br>(Armor) +65% Faster Run/Walk<br>+40% Increased Attack Speed<br>+20% Faster Hit Recovery<br>+6 to Evade<br>+10 to Dexterity<br>50% Slower Stamina Drain<br>All Resistances +10' },
+          { name: "Ice", runes: ['Amn', 'Shael', 'Jah', 'Lo'], itemTypes: 'Missile Weapons (4 Sockets)', info: 'LvL 65', stats: '100% Chance To Cast Level 40 Blizzard When You Level-up<br>25% Chance To Cast Level 22 Frost Nova On Striking<br>Level 18 Holy Freeze Aura When Equipped<br>+20% Increased Attack Speed<br>+140-210% Enhanced Damage<br>Ignore Target\'s Defense<br>+25-30% To Cold Skill Damage<br>-20% To Enemy Cold Resistance<br>7% Life Stolen Per Hit<br>20% Deadly Strike<br>+3.125*Clvl Extra Gold From Monsters (Based on Character Level)' },
+          { name: "Infinity", runes: ['Ber', 'Mal', 'Ber', 'Ist'], itemTypes: 'Polearms/Spears (4 Sockets)', info: 'LvL 63', stats: '50% Chance To Cast Level 20 Chain Lightning When You Kill An Enemy<br>Level 12 Conviction Aura When Equipped<br>+35% Faster Run/Walk<br>+255-325% Enhanced Damage<br>-(45-55)% To Enemy Lightning Resistance<br>40% Chance of Crushing Blow<br>Prevent Monster Heal<br>+(0.5*Clvl) To Vitality (Based On Character Level)<br>30% Better Chance of Getting Magic Items<br>Level 21 Cyclone Armor (30 Charges)' },
+          { name: "Insight", runes: ['Ral', 'Tir', 'Tal', 'Sol'], itemTypes: 'Polearms/Staves/Bows/Crossbows (4 Sockets)', info: 'LvL 27', stats: 'Level 12-17 Meditation Aura When Equipped<br>+35% Faster Cast Rate<br>+200-260% Enhanced Damage<br>+9 To Minimum Damage<br>180-250% Bonus To Attack Rating<br>Adds 5-30 Fire Damage<br>+75 Poison Damage Over 5 Seconds<br>+1-6 To Critical Strike<br>+5 To All Attributes<br>+2 To Mana After Each Kill<br>23% Better Chance of Getting Magic Items' },
+          { name: "King's Grace", runes: ['Amn', 'Ral', 'Thul'], itemTypes: 'Swords/Scepters (3 Sockets)', info: 'LvL 25', stats: '+100% Enhanced Damage<br>+100% Damage To Demons<br>+50% Damage To Undead<br>Adds 5-30 Fire Damage<br>Adds 3-14 Cold Damage - 3 Second Duration<br>+150 To Attack Rating<br>+100 To Attack Rating Against Demons<br>+100 To Attack Rating Against Undead<br>7% Life Stolen Per Hit' },
+          { name: "Kingslayer", runes: ['Mal', 'Um', 'Gul', 'Fal'], itemTypes: 'Swords/Axes (4 Sockets)', info: 'LvL 53', stats: '+30% Increased Attack Speed<br>+230-270% Enhanced Damage<br>-25% Target Defense<br>20% Bonus To Attack Rating<br>33% Chance of Crushing Blow<br>50% Chance of Open Wounds<br>+1 To Vengeance<br>Prevent Monster Heal<br>+10 To Strength<br>40% Extra Gold From Monsters' },
+          { name: "Last Wish", runes: ['Jah', 'Mal', 'Jah', 'Sur', 'Jah', 'Ber'], itemTypes: 'Swords/Hammers/Axes (6 Sockets)', info: 'LvL 65', stats: '6% Chance To Cast Level 11 Fade When Struck<br>10% Chance To Cast Level 18 Life Tap On Striking<br>20% Chance To Cast Level 20 Charged Bolt On Attack<br>Level 17 Might Aura When Equipped<br>+330-375% Enhanced Damage<br>Ignore Target\'s Defense<br>60-70% Chance of Crushing Blow<br>Prevent Monster Heal<br>Hit Blinds Target<br>+(0.5*Clvl)% Chance of Getting Magic Items (Based On Character Level)' },
+          { name: "Lawbringer", runes: ['Amn', 'Lem', 'Ko'], itemTypes: 'Swords/Hammers/Scepters (3 Sockets)', info: 'LvL 43', stats: '20% Chance To Cast Level 15 Decrepify On Striking<br>Level 16-18 Sanctuary Aura When Equipped<br>-50% Target Defense<br>Adds 150-210 Fire Damage<br>Adds 130-180 Cold Damage<br>7% Life Stolen Per Hit<br>Slain Monsters Rest In Peace<br>+200-250 Defense Vs. Missile<br>+10 To Dexterity<br>75% Extra Gold From Monsters' },
+          { name: "Leaf", runes: ['Tir', 'Ral'], itemTypes: 'Staves (2 Sockets)', info: 'LvL 19', stats: '+3 To Fire Skills<br>Adds 5-30 Fire Damage<br>+3 To Inferno (Sorceress Only)<br>+3 To Warmth (Sorceress Only)<br>+3 To Fire Bolt (Sorceress Only)<br>+(2*Clvl) To Defense (Based On Character Level)<br>Cold Resist +33%<br>+2 To Mana After Each Kill' },
+          { name: "Lionheart", runes: ['Hel', 'Lum', 'Fal'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 41', stats: '+20% Enhanced Damage<br>Requirements -15%<br>+25 To Strength<br>+10 To Energy<br>+20 To Vitality<br>+15 To Dexterity<br>+50 To Life<br>All Resistances +30' },
+          { name: "Lore", runes: ['Ort', 'Sol'], itemTypes: 'Helms (2 Sockets)', info: 'LvL 27', stats: '+1 To All Skill Levels<br>+10 To Energy<br>+2 To Mana After Each Kill<br>Lightning Resist +30%<br>Damage Reduced By 7<br>+2 To Light Radius' },
+          { name: "Malice", runes: ['Ith', 'El', 'Eth'], itemTypes: 'Melee Weapons (3 Sockets)', info: 'LvL 15', stats: '+33% Enhanced Damage<br>+9 To Maximum Damage<br>-25% Target Defense<br>+50 To Attack Rating<br>100% Chance of Open Wounds<br>Prevent Monster Heal<br>-100 To Monster Defense Per Hit<br>Drain Life -5' },
+          { name: "Melody", runes: ['Shael', 'Ko', 'Nef'], itemTypes: 'Missile Weapons (3 Sockets)', info: 'LvL 39', stats: '+3 To Bow and Crossbow Skills (Amazon Only)<br>+20% Increased Attack Speed<br>+50% Enhanced Damage<br>+300% Damage To Undead<br>+3 To Slow Missiles (Amazon Only)<br>+3 To Dodge (Amazon Only)<br>+3 To Critical Strike (Amazon Only)<br>Knockback<br>+10 To Dexterity' },
+          { name: "Memory", runes: ['Lum', 'Io', 'Sol', 'Eth'], itemTypes: 'Staves (4 Sockets)', info: 'LvL 37', stats: '+3 To Sorceress Skill Levels<br>33% Faster Cast Rate<br>Increase Maximum Mana 20%<br>+3 To Energy Shield (Sorceress Only)<br>+3 To Static Field (Sorceress Only)<br>+10 To Energy<br>+10 To Vitality<br>+9 To Minimum Damage<br>-25% Target Defense<br>Magic Damage Reduced By 7<br>+50% Enhanced Defense' },
+          { name: "Metamorphosis", runes: ['Io', 'Cham', 'Fal'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 65', stats: 'Werewolf strikes grant Mark for 180 seconds<br>Mark of the Wolf:<br> +30% Bonus to Attack Rating<br> Increase Maximum Life 40%<br>Werebear strikes grant Mark for 180 seconds<br>Mark of the Bear:<br> +25% Attack Speed<br> +20% Physical Damage Received Reduced<br> +25% Crushing Blow<br>+5 to Shape Shifting Skills (Druid Only)<br>+50-80% Enhanced Defense<br>+10 to Strength<br>+10 to Vitality<br>All Resistances +10<br>Cannot be Frozen' },
+          { name: "Mist", runes: ['Cham', 'Shael', 'Gul', 'Thul', 'Ith'], itemTypes: 'Missile Weapons (5 Sockets)', info: 'LvL 67', stats: 'Level 8-12 Concentration Aura When Equipped<br>+3 To All Skills<br>+20% Increased Attack Speed<br>+100% Piercing Attack<br>+325-375% Enhanced Damage<br>+9 To Maximum Damage<br>20% Bonus to Attack Rating<br>Adds 3-14 Cold Damage<br>Freezes Target +3<br>+24 to Vitality<br>All Resistances +40' },
+          { name: "Mosaic", runes: ['Mal', 'Gul', 'Thul'], itemTypes: 'Claws (3 Sockets)', info: 'LvL 53', stats: '+50% chance for finishing moves to not consume charges<br>When a finisher is used this way, it now refreshes the expiration timer of the stack<br>+2 to Martial Arts (Assassin only)<br>+20% Increased Attack Speed<br>+200-250% Enhanced Damage<br>+20% Bonus to Attack Rating<br>Adds 3-14 Cold Damage<br>Prevent Monster Heal' },
+          { name: "Myth", runes: ['Hel', 'Amn', 'Nef'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 25', stats: '3% Chance To Cast Level 1 Howl On Striking<br>10% Chance To Cast Level 1 Taunt On Striking<br>+2 To Barbarian Skill Levels<br>+30 Defense Vs. Missile<br>Replenish Life +10<br>Attacker Takes Damage of 14<br>Requirements -15%' },
+          { name: "Nadir", runes: ['Nef', 'Tir'], itemTypes: 'Helms (2 Sockets)', info: 'LvL 13', stats: '+50% Enhanced Defense<br>+10 Defense<br>+30 Defense vs. Missile<br>-33% Extra Gold from Monsters<br>-3 To Light Radius<br>Level 13 Cloak of Shadows (9 Charges)' },
+          { name: "Oath", runes: ['Shael', 'Pul', 'Mal', 'Lum'], itemTypes: 'Swords/Axes/Maces (4 Sockets)', info: 'LvL 49', stats: '30% Chance To Cast Level 20 Bone Spirit On Striking<br>Indestructible<br>+50% Increased Attack Speed<br>+210-340% Enhanced Damage<br>+75% Damage To Demons<br>+100 To Attack Rating Against Demons<br>Prevent Monster Heal<br>+10 To Energy<br>+10-15 Magic Absorb<br>Level 16 Heart of Wolverine (20 Charges)<br>Level 17 Iron Golem (14 Charges)' },
+          { name: "Obedience", runes: ['Hel', 'Ko', 'Thul', 'Eth', 'Fal'], itemTypes: 'Polearms/Spears (5 Sockets)', info: 'LvL 41', stats: '30% Chance To Cast Level 21 Enchant When You Kill An Enemy<br>40% Faster Hit Recovery<br>+370% Enhanced Damage<br>-25% Target Defense<br>Adds 3-14 Cold Damage<br>-25% To Enemy Fire Resistance<br>40% Chance of Crushing Blow<br>+200-300 Defense<br>+10 To Strength<br>+10 To Dexterity<br>All Resistances +20-30<br>Requirements -20%' },
+          { name: "Obsession", runes: ['Zod', 'Ist', 'Lem', 'Lum', 'Io', 'Nef'], itemTypes: 'Staves (6 Sockets)', info: 'LvL 69', stats: 'Indestructible<br>24% Chance to cast level 10 Weaken when struck<br>+4 To All Skills<br>+65% Faster Cast Rate<br>+60% Faster Hit Recovery<br>Knockback<br>+10 To Vitality<br>+10 To Energy<br>Increase Maximum Life 15-25%<br>Regenerate Mana 15-30%<br>All Resistances +60-70<br>75% Extra Gold from Monsters<br>30% Better Chance of Getting Magic Items' },
+          { name: "Passion", runes: ['Dol', 'Ort', 'Eld', 'Lem'], itemTypes: 'Weapons (4 Sockets)', info: 'LvL 43', stats: '+25% Increased Attack Speed<br>+160-210% Enhanced Damage<br>50-80% Bonus To Attack Rating<br>+75% Damage To Undead<br>+50 To Attack Rating Against Undead<br>Adds 1-50 Lightning Damage<br>+1 To Berserk<br>+1 To Zeal<br>Hit Blinds Target +10<br>Hit Causes Monster To Flee 25%<br>75% Extra Gold From Monsters<br>Level 3 Heart of Wolverine (12 Charges)' },
+          { name: "Pattern", runes: ['Tal', 'Ort', 'Thul'], itemTypes: 'Claws (3 Sockets)', info: 'LvL 23', stats: '+30% Faster Block Rate<br>+40-80% Enhanced Damage<br>10% Bonus to Attack Rating<br>Adds 17-62 Fire Damage<br>Adds 1-50 Lightning Damage<br>Adds 3-14 Cold Damage<br>+75 Poison Damage Over 5 Seconds<br>+6 Strength<br>+6 Dexterity<br>All Resistances +15' },
+          { name: "Peace", runes: ['Shael', 'Thul', 'Amn'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 29', stats: '4% Chance To Cast Level 5 Slow Missiles When Struck<br>2% Chance To Cast level 15 Valkyrie On Striking<br>+2 To Amazon Skill Levels<br>+20% Faster Hit Recovery<br>+2 To Critical Strike<br>Cold Resist +30%<br>Attacker Takes Damage of 14' },
+          { name: "Phoenix", runes: ['Vex', 'Vex', 'Lo', 'Jah'], itemTypes: 'Weapons/Shields (4 Sockets)', info: 'LvL 65', stats: '100% Chance To Cast level 40 Blaze When You Level-up<br>40% Chance To Cast Level 22 Firestorm On Striking<br>Level 10-15 Redemption Aura When Equipped<br>+350-400% Enhanced Damage<br>Ignores Target\'s Defense<br>14% Mana Stolen Per Hit<br>-28% To Enemy Fire Resistance<br>20% Deadly Strike<br>+350-400 Defense Vs. Missile<br>+15-21 Fire Absorb' },
+          { name: "Plague", runes: ['Cham', 'Shael', 'Um'], itemTypes: 'Swords/Claws/Daggers (3 Sockets)', info: 'LvL 67', stats: '25% Chance to Cast level 15 Poison Nova On Striking<br>20% Chance to Cast level 12 Lower Resist When Struck<br>Level 13-17 Cleansing Aura When Equipped<br>+1-2 All Skills<br>+20% Increased Attack Speed<br>+220-320% Enhanced Damage<br>-23% To Enemy Poison Resistance<br>0.3% (0-29.7) Deadly Strike (Based on Character Level)<br>+25% Chance of Open Wounds<br>Freezes Target +3' },
+          { name: "Pride", runes: ['Cham', 'Sur', 'Io', 'Lo'], itemTypes: 'Polearms/Spears (4 Sockets)', info: 'LvL 67', stats: '25% Chance To Cast Level 17 Fire Wall When Struck<br>Level 16-20 Concentration Aura When Equipped<br>260-300% Bonus To Attack Rating<br>+(1*Clvl)% Damage To Demons (Based on Character Level)<br>Adds 50-280 Lightning Damage<br>20% Deadly Strike<br>Hit Blinds Target<br>Freezes Target +3<br>+10 To Vitality<br>Replenish Life +8<br>+1.875*Clvl Extra Gold From Monsters (Based on Character Level)' },
+          { name: "Principle", runes: ['Ral', 'Gul', 'Eld'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 53', stats: '100% Chance To Cast Level 5 Holy Bolt On Striking<br>+2 To Paladin Skill Levels<br>+100-150 to Life<br>15% Slower Stamina Drain<br>+5% To Maximum Poison Resist<br>Fire Resist +30%' },
+          { name: "Prudence", runes: ['Mal', 'Tir'], itemTypes: 'Body Armor (2 Sockets)', info: 'LvL 49', stats: '+25% Faster Hit Recovery<br>+140-170% Enhanced Defense<br>All Resistances +25-35<br>Damage Reduced By 3<br>Magic Damage Reduced By 17<br>+2 To Mana After Each Kill<br>+1 To Light Radius<br>Repairs Durability 1 In 4 Seconds' },
+          { name: "Radiance", runes: ['Nef', 'Sol', 'Ith'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 27', stats: '+75% Enhanced Defense<br>+30 Defense Vs. Missile<br>+10 To Energy<br>+10 To Vitality<br>15% Damage Goes To Mana<br>Magic Damage Reduced By 3<br>Damage Reduced By 7<br>+33 To Mana<br>+5 To Light Radius' },
+          { name: "Rain", runes: ['Ort', 'Mal', 'Ith'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 49', stats: '5% Chance To Cast Level 15 Cyclone Armor When Struck<br>5% Chance To Cast Level 15 Twister On Striking<br>+2 To Druid Skills<br>+100-150 To Mana<br>Lightning Resist +30%<br>Magic Damage Reduced By 7<br>15% Damage Taken Goes to Mana' },
+          { name: "Rhyme", runes: ['Shael', 'Eth'], itemTypes: 'Shields (2 Sockets)', info: 'LvL 29', stats: '+20% Increased Chance of Blocking<br>+20% Faster Block Rate<br>All Resistances +25<br>Regenerate Mana 15%<br>Cannot Be Frozen<br>50% Extra Gold From Monsters<br>25% Better Chance of Getting Magic Items' },
+          { name: "Rift", runes: ['Hel', 'Ko', 'Lem', 'Gul'], itemTypes: 'Polearms/Scepters (4 Sockets)', info: 'LvL 53', stats: '20% Chance To Cast Level 16 Tornado On Striking<br>16% Chance To Cast Level 21 Frozen Orb On Attack<br>20% Bonus To Attack Rating<br>Adds 160-250 Magic Damage<br>Adds 60-180 Fire Damage<br>+5-10 To All Stats<br>+10 To Dexterity<br>38% Damage Taken Goes To Mana<br>75% Extra Gold From Monsters<br>Level 15 Iron Maiden (40 Charges)<br>Requirements -20%' },
+          { name: "Sanctuary", runes: ['Ko', 'Ko', 'Mal'], itemTypes: 'Shields (3 Sockets)', info: 'LvL 49', stats: '+20% Faster Hit Recovery<br>+20% Faster Block Rate<br>+20% Increased Chance of Blocking<br>+130-160% Enhanced Defense<br>+250 Defense vs. Missile<br>+20 To Dexterity<br>All Resistances +50-70<br>Magic Damage Reduced By 7<br>Level 12 Slow Missiles (60 Charges)' },
+          { name: "Silence", runes: ['Dol', 'Eld', 'Hel', 'Ist', 'Tir', 'Vex'], itemTypes: 'Weapons (6 Sockets)', info: 'LvL 55', stats: '+2 To All Skills<br>+20% Increased Attack Speed<br>+20% Faster Hit Recovery<br>+200% Enhanced Damage<br>+75% Damage To Undead<br>+50 To Attack Rating Against Undead<br>11% Mana Stolen Per Hit<br>Hit Blinds Target +33<br>Hit Causes Monster To Flee 25%<br>All Resistances +75<br>+2 To Mana After Each Kill<br>30% Better Chance Of Getting Magic Items<br>Requirements -20%' },
+          { name: "Smoke", runes: ['Nef', 'Lum'], itemTypes: 'Body Armor (2 Sockets)', info: 'LvL 37', stats: '+20% Faster Hit Recovery<br>+75% Enhanced Defense<br>+280 Defense Vs. Missile<br>+10 To Energy<br>All Resistances +50<br>-1 To Light Radius<br>Level 6 Weaken (18 Charges)' },
+          { name: "Spirit", runes: ['Tal', 'Thul', 'Ort', 'Amn'], itemTypes: 'Swords/Shields (4 Sockets)', info: 'LvL 25', stats: '+2 To All Skills<br>+25-35% Faster Cast Rate<br>+55% Faster Hit Recovery<br>Adds 1-50 Lightning Damage<br>Adds 3-14 Cold Damage<br>+75 Poison Damage Over 5 Seconds<br>7% Life Stolen Per Hit<br>+250 Defense Vs. Missile<br>+22 To Vitality<br>+89-112 To Mana<br>+3-8 Magic Absorb' },
+          { name: "Splendor", runes: ['Eth', 'Lum'], itemTypes: 'Shields (2 Sockets)', info: 'LvL 37', stats: '+1 To All Skills<br>+10% Faster Cast Rate<br>+20% Faster Block Rate<br>+60-100% Enhanced Defense<br>+10 To Energy<br>Regenerate Mana 15%<br>50% Extra Gold From Monsters<br>20% Better Chance of Getting Magic Items<br>+3 To Light Radius' },
+          { name: "Stealth", runes: ['Tal', 'Eth'], itemTypes: 'Body Armor (2 Sockets)', info: 'LvL 17', stats: '+25% Faster Run/Walk<br>+25% Faster Cast Rate<br>+25% Faster Hit Recovery<br>+6 To Dexterity<br>Regenerate Mana 15%<br>Maximum Mana +15%<br>Poison Resist +30%<br>Magic Damage Reduced By 3' },
+          { name: "Steel", runes: ['Tir', 'El'], itemTypes: 'Swords/Axes/Maces (2 Sockets)', info: 'LvL 13', stats: '+20% Enhanced Damage<br>+3 To Minimum Damage<br>+3 To Maximum Damage<br>+50 To Attack Rating<br>50% Chance of Open Wounds<br>+25% Increased Attack Speed<br>+2 To Mana After Each Kill<br>+1 To Light Radius' },
+          { name: "Stone", runes: ['Shael', 'Um', 'Pul', 'Lum'], itemTypes: 'Body Armor (4 Sockets)', info: 'LvL 47', stats: '+60% Faster Hit Recovery<br>+250-290% Enhanced Defense<br>+300 Defense Vs. Missile<br>+16 To Strength<br>+16 To Vitality<br>+10 To Energy<br>All Resistances +15<br>Level 16 Molten Boulder (80 Charges)<br>Level 16 Clay Golem (16 Charges)' },
+          { name: "Strength", runes: ['Amn', 'Tir'], itemTypes: 'Melee Weapons (2 Sockets)', info: 'LvL 25', stats: '+35% Enhanced Damage<br>7% Life Stolen Per Hit<br>25% Chance of Crushing Blow<br>+20 To Strength<br>+10 To Vitality<br>+2 To Mana After Each Kill' },
+          { name: "Temper", runes: ['Shael', 'Io', 'Ral'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 35', stats: '+20% Faster Hit Recovery<br>+75-100% Enhanced Defense<br>+10 to Vitality<br>Increase Maximum Life 5%<br>Fire Resist +40-60%<br>Fire Absorb +10-15%' },
+          { name: "Treachery", runes: ['Shael', 'Thul', 'Lem'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 43', stats: '5% Chance To Cast Level 15 Fade When Struck<br>25% Chance To Cast level 15 Venom On Striking<br>+2 To Assassin Skills<br>+45% Increased Attack Speed<br>+20% Faster Hit Recovery<br>Cold Resist +30%<br>50% Extra Gold From Monsters' },
+          { name: "Unbending Will", runes: ['Fal', 'Io', 'Ith', 'Eld', 'El', 'Hel'], itemTypes: 'Swords (6 Sockets)', info: 'LvL 41', stats: '18% Chance To Cast Level 18 Taunt On Striking<br>+3 To Combat Skills (Barbarian Only)<br>+20-30% Increased Attack Speed<br>+300-350% Enhanced Damage<br>+9 To Maximum Damage<br>+50 To Attack Rating<br>+75% Damage vs. Undead<br>+50 Attack Rating vs. Undead<br>8-10% Life Stolen Per Hit<br>Prevent Monster Heal<br>+10 To Strength<br>+10 To Vitality<br>Damage Reduced By 8<br>+1 To Light Radius<br>Requirements -20%' },
+          { name: "Venom", runes: ['Tal', 'Dol', 'Mal'], itemTypes: 'Weapons (3 Sockets)', info: 'LvL 49', stats: 'Ignore Target\'s Defense<br>+273 Poison Damage Over 6 Seconds<br>7% Mana Stolen Per Hit<br>Prevent Monster Heal<br>Hit Causes Monster To Flee 25%<br>Level 13 Poison Nova (11 Charges)<br>Level 15 Poison Explosion (27 Charges)' },
+          { name: "Voice of Reason", runes: ['Lem', 'Ko', 'El', 'Eld'], itemTypes: 'Swords/Maces (4 Sockets)', info: 'LvL 43', stats: '15% Chance To Cast Level 13 Frozen Orb On Striking<br>18% Chance To Cast Level 20 Ice Blast On Striking<br>+50 To Attack Rating<br>+220-350% Damage To Demons<br>+355-375% Damage To Undead<br>+50 To Attack Rating Against Undead<br>Adds 100-220 Cold Damage<br>-24% To Enemy Cold Resistance<br>+10 To Dexterity<br>Cannot Be Frozen<br>75% Extra Gold From Monsters<br>+1 To Light Radius' },
+          { name: "Wealth", runes: ['Lem', 'Ko', 'Tir'], itemTypes: 'Body Armor (3 Sockets)', info: 'LvL 43', stats: '+10 To Dexterity<br>+2 To Mana After Each Kill<br>300% Extra Gold From Monsters<br>100% Better Chance Of Getting Magic Items' },
+          { name: "White", runes: ['Dol', 'Io'], itemTypes: 'Wands (2 Sockets)', info: 'LvL 35', stats: '+3 To Poison And Bone Skills (Necromancer Only)<br>+20% Faster Cast Rate<br>+2 To Bone Spear (Necromancer Only)<br>+4 To Skeleton Mastery (Necromancer Only)<br>+3 To Bone Armor (Necromancer Only)<br>Hit Causes Monster To Flee 25%<br>+10 To Vitality<br>+13 To Mana<br>Magic Damage Reduced By 4' },
+          { name: "Wind", runes: ['Sur', 'El'], itemTypes: 'Melee Weapons (2 Sockets)', info: 'LvL 61', stats: '10% Chance To Cast Level 9 Tornado On Striking<br>+20% Faster Run/Walk<br>+40% Increased Attack Speed<br>+15% Faster Hit Recovery<br>+120-160% Enhanced Damage<br>-50% Target Defense<br>+50 To Attack Rating<br>Hit Blinds Target<br>+1 To Light Radius<br>Level 13 Twister (127 Charges)' },
+          { name: "Wisdom", runes: ['Pul', 'Ith', 'Eld'], itemTypes: 'Helms (3 Sockets)', info: 'LvL 45', stats: '+33% Piercing Attack<br>+15-25% Bonus to Attack Rating<br>4-8% Mana stolen per hit<br>+30% Enhanced Defense<br>+10 Energy<br>15% Slower Stamina Drain<br>Cannot be Frozen<br>+5 Mana after each Kill<br>15% Damage Taken Goes to Mana' },
+          { name: "Wrath", runes: ['Pul', 'Lum', 'Ber', 'Mal'], itemTypes: 'Missile Weapons (4 Sockets)', info: 'LvL 63', stats: '30% Chance To Cast Level 1 Decrepify On Striking<br>5% Chance To Cast Level 10 Life Tap On Striking<br>+375% Damage To Demons<br>+100 To Attack Rating Against Demons<br>+250-300% Damage To Undead<br>Adds 85-120 Magic Damage<br>Adds 41-240 Lightning Damage<br>20% Chance of Crushing Blow<br>Prevent Monster Heal<br>+10 To Energy<br>Cannot Be Frozen' },
+          { name: "Zephyr", runes: ['Ort', 'Eth'], itemTypes: 'Missile Weapons (2 Sockets)', info: 'LvL 21', stats: '+33% Enhanced Damage<br>+66 To Attack Rating<br>Adds 1-50 Lightning Damage<br>-25% Target Defense<br>+25 Defense<br>+25% Faster Run/Walk<br>7% Increased Attack Speed<br>Level 1 Twister (30 Charges)' }
+        ];
+        const runeUpgradeRecipes = [ { inputs: [{ name: 'El', count: 3 }], output: 'Eld' }, { inputs: [{ name: 'Eld', count: 3 }], output: 'Tir' }, { inputs: [{ name: 'Tir', count: 3 }], output: 'Nef' }, { inputs: [{ name: 'Nef', count: 3 }], output: 'Eth' }, { inputs: [{ name: 'Eth', count: 3 }], output: 'Ith' }, { inputs: [{ name: 'Ith', count: 3 }], output: 'Tal' }, { inputs: [{ name: 'Tal', count: 3 }], output: 'Ral' }, { inputs: [{ name: 'Ral', count: 3 }], output: 'Ort' }, { inputs: [{ name: 'Ort', count: 3 }], output: 'Thul', gem: 'Chipped Topaz' }, { inputs: [{ name: 'Thul', count: 3 }], output: 'Amn', gem: 'Chipped Amethyst' }, { inputs: [{ name: 'Amn', count: 3 }], output: 'Sol', gem: 'Chipped Sapphire' }, { inputs: [{ name: 'Sol', count: 3 }], output: 'Shael', gem: 'Chipped Ruby' }, { inputs: [{ name: 'Shael', count: 3 }], output: 'Dol', gem: 'Chipped Emerald' }, { inputs: [{ name: 'Dol', count: 3 }], output: 'Hel', gem: 'Chipped Diamond' }, { inputs: [{ name: 'Hel', count: 3 }], output: 'Io', gem: 'Flawed Topaz' }, { inputs: [{ name: 'Io', count: 3 }], output: 'Lum', gem: 'Flawed Amethyst' }, { inputs: [{ name: 'Lum', count: 3 }], output: 'Ko', gem: 'Flawed Sapphire' }, { inputs: [{ name: 'Ko', count: 3 }], output: 'Fal', gem: 'Flawed Ruby' }, { inputs: [{ name: 'Fal', count: 3 }], output: 'Lem', gem: 'Flawed Emerald' }, { inputs: [{ name: 'Lem', count: 3 }], output: 'Pul', gem: 'Flawed Diamond' }, { inputs: [{ name: 'Pul', count: 2 }], output: 'Um', gem: 'Topaz' }, { inputs: [{ name: 'Um', count: 2 }], output: 'Mal', gem: 'Amethyst' }, { inputs: [{ name: 'Mal', count: 2 }], output: 'Ist', gem: 'Sapphire' }, { inputs: [{ name: 'Ist', count: 2 }], output: 'Gul', gem: 'Ruby' }, { inputs: [{ name: 'Gul', count: 2 }], output: 'Vex', gem: 'Emerald' }, { inputs: [{ name: 'Vex', count: 2 }], output: 'Ohm', gem: 'Diamond' }, { inputs: [{ name: 'Ohm', count: 2 }], output: 'Lo', gem: 'Flawless Topaz' }, { inputs: [{ name: 'Lo', count: 2 }], output: 'Sur', gem: 'Flawless Amethyst' }, { inputs: [{ name: 'Sur', count: 2 }], output: 'Ber', gem: 'Flawless Sapphire' }, { inputs: [{ name: 'Ber', count: 2 }], output: 'Jah', gem: 'Flawless Ruby' }, { inputs: [{ name: 'Jah', count: 2 }], output: 'Cham', gem: 'Flawless Emerald' }, { inputs: [{ name: 'Cham', count: 2 }], output: 'Zod', gem: 'Flawless Diamond' },];
+        const gemTypes = ['Amethyst', 'Diamond', 'Emerald', 'Ruby', 'Sapphire', 'Topaz', 'Skull'];
+        const gemQualities = ['Chipped', 'Flawed', 'Normal', 'Flawless', 'Perfect'];
+        const gemsData = [];
+        const gemNameMap = {};
+        const gemImageUrls = {
+            'Chipped Amethyst': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_amethyst.png', 'Flawed Amethyst': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_amethyst.png', 'Amethyst': 'https://www.purediablo.com/wp-content/uploads/2021/04/amethyst.png', 'Flawless Amethyst': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_amethyst.png', 'Perfect Amethyst': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_amethyst.png', 'Chipped Diamond': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_diamond.png', 'Flawed Diamond': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_diamond.png', 'Diamond': 'https://www.purediablo.com/wp-content/uploads/2021/04/diamond.png', 'Flawless Diamond': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_diamond.png', 'Perfect Diamond': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_diamond.png', 'Chipped Emerald': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_emerald.png', 'Flawed Emerald': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_emerald.png', 'Emerald': 'https://www.purediablo.com/wp-content/uploads/2021/04/emerald.png', 'Flawless Emerald': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_emerald.png', 'Perfect Emerald': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_emerald.png', 'Chipped Ruby': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_ruby.png', 'Flawed Ruby': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_ruby.png', 'Ruby': 'https://www.purediablo.com/wp-content/uploads/2021/04/ruby.png', 'Flawless Ruby': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_ruby.png', 'Perfect Ruby': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_ruby.png', 'Chipped Sapphire': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_saphire.png', 'Flawed Sapphire': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_saphire.png', 'Sapphire': 'https://www.purediablo.com/wp-content/uploads/2021/04/saphire.png', 'Flawless Sapphire': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_saphire.png', 'Perfect Sapphire': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_saphire.png', 'Chipped Topaz': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_topaz.png', 'Flawed Topaz': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_topaz.png', 'Topaz': 'https://www.purediablo.com/wp-content/uploads/2021/04/topaz.png', 'Flawless Topaz': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_topaz.png', 'Perfect Topaz': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_topaz.png', 'Chipped Skull': 'https://www.purediablo.com/wp-content/uploads/2021/04/chipped_skull.png', 'Flawed Skull': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawed_skull.png', 'Skull': 'https://www.purediablo.com/wp-content/uploads/2021/04/skull.png', 'Flawless Skull': 'https://www.purediablo.com/wp-content/uploads/2021/04/flawless_skull.png', 'Perfect Skull': 'https://www.purediablo.com/wp-content/uploads/2021/04/perfect_skull.png'
+        };
+        gemTypes.forEach(type => { gemQualities.forEach(quality => { const qualityPrefix = quality === 'Normal' ? '' : quality + ' '; const fullName = (type === 'Skull' && quality === 'Normal') ? 'Skull' : `${qualityPrefix}${type}`; const gemInfo = { name: fullName, quality: quality, type: type }; gemsData.push(gemInfo); gemNameMap[fullName] = gemInfo; }); });
+        const gemUpgradeRecipes = [];
+        gemTypes.forEach(type => { for (let i = 0; i < gemQualities.length - 1; i++) { const currentQuality = gemQualities[i]; const nextQuality = gemQualities[i+1]; const currentQualityPrefix = currentQuality === 'Normal' ? '' : currentQuality + ' '; const nextQualityPrefix = nextQuality === 'Normal' ? '' : nextQuality + ' '; let inputName = (type === 'Skull' && currentQuality === 'Normal') ? 'Skull' : `${currentQualityPrefix}${type}`; let outputName = (type === 'Skull' && nextQuality === 'Normal') ? 'Skull' : `${nextQualityPrefix}${type}`; if (gemNameMap[inputName] && gemNameMap[outputName]) { gemUpgradeRecipes.push({ inputs: [{ name: inputName, count: 3 }], output: outputName }); } else { console.warn(`Skipping gem upgrade recipe generation from ${inputName} to ${outputName}: Name not found in map.`); } } });
+
+        // --- NEW: Cube Recipe Data ---
+        const cubeRecipesData = [
+            // Socketing Recipes
+            { name: "Add Socket to Normal Weapon", type: "Socketing", inputs: [{ type: 'rune', name: 'Ral', count: 1 }, { type: 'rune', name: 'Amn', count: 1 }, { type: 'gem', name: 'Perfect Amethyst', count: 1 }, { type: 'item', name: 'Normal Weapon', desc: '(Non-socketed)' }], result: "Same Weapon with Random Sockets (1-6)" },
+            { name: "Add Socket to Normal Armor", type: "Socketing", inputs: [{ type: 'rune', name: 'Tal', count: 1 }, { type: 'rune', name: 'Thul', count: 1 }, { type: 'gem', name: 'Perfect Topaz', count: 1 }, { type: 'item', name: 'Normal Armor', desc: '(Body Armor, Helm, Shield)' }], result: "Same Item with Random Sockets (1-4)" },
+            { name: "Add Socket to Normal Helm", type: "Socketing", inputs: [{ type: 'rune', name: 'Ral', count: 1 }, { type: 'rune', name: 'Thul', count: 1 }, { type: 'gem', name: 'Perfect Sapphire', count: 1 }, { type: 'item', name: 'Normal Helm', desc: '(Non-socketed)' }], result: "Same Helm with Random Sockets (1-3)" },
+            { name: "Add Socket to Normal Shield", type: "Socketing", inputs: [{ type: 'rune', name: 'Tal', count: 1 }, { type: 'rune', name: 'Amn', count: 1 }, { type: 'gem', name: 'Perfect Ruby', count: 1 }, { type: 'item', name: 'Normal Shield', desc: '(Non-socketed)' }], result: "Same Shield with Random Sockets (1-4)" },
+            { name: "Add Socket to Rare Item", type: "Socketing", inputs: [{ type: 'gem', name: 'Perfect Skull', count: 3 }, { type: 'item', name: 'Stone of Jordan', desc: '(Ring)' }, { type: 'item', name: 'Rare Item', desc: '(Non-socketed)' }], result: "Same Rare Item with 1 Socket" }, // Note: SOJ not tracked
+            // Repairing Recipes
+            { name: "Repair Armor", type: "Repairing", inputs: [{ type: 'rune', name: 'Ral', count: 1 }, { type: 'item', name: 'Flawed Gem', count: 1, desc: '(Any type, needs 1)' }, { type: 'item', name: 'Armor', desc: '(Non-ethereal)' }], result: "Fully Repaired Armor" }, // Note: Gem type/count not specific enough to track easily
+            { name: "Repair Weapon", type: "Repairing", inputs: [{ type: 'rune', name: 'Ort', count: 1 }, { type: 'item', name: 'Chipped Gem', count: 1, desc: '(Any type, needs 1)' }, { type: 'item', name: 'Weapon', desc: '(Non-ethereal)' }], result: "Fully Repaired Weapon" }, // Note: Gem type/count not specific enough to track easily
+            { name: "Recharge Armor/Weapon", type: "Repairing", inputs: [{ type: 'rune', name: 'Ort', count: 1 }, { type: 'rune', name: 'Ral', count: 1 }, { type: 'gem', name: 'Flawed Gem', count: 1, desc: '(Any type, needs 1)' }, { type: 'item', name: 'Armor/Weapon', desc: '(Charged, Non-ethereal)' }], result: "Fully Repaired and Recharged Item" }, // Note: Gem type/count not specific enough to track easily
+            // Item Upgrading Recipes (Normal -> Exceptional -> Elite)
+            { name: "Upgrade Normal Weapon to Exceptional", type: "Upgrading", inputs: [{ type: 'rune', name: 'Ral', count: 1 }, { type: 'rune', name: 'Sol', count: 1 }, { type: 'gem', name: 'Perfect Emerald', count: 1 }, { type: 'item', name: 'Normal Weapon' }], result: "Exceptional Version of Weapon" },
+            { name: "Upgrade Normal Armor to Exceptional", type: "Upgrading", inputs: [{ type: 'rune', name: 'Tal', count: 1 }, { type: 'rune', name: 'Shael', count: 1 }, { type: 'gem', name: 'Perfect Diamond', count: 1 }, { type: 'item', name: 'Normal Armor' }], result: "Exceptional Version of Armor" },
+            { name: "Upgrade Exceptional Weapon to Elite", type: "Upgrading", inputs: [{ type: 'rune', name: 'Lum', count: 1 }, { type: 'rune', name: 'Pul', count: 1 }, { type: 'gem', name: 'Perfect Emerald', count: 1 }, { type: 'item', name: 'Exceptional Weapon' }], result: "Elite Version of Weapon (Ladder Only)" },
+            { name: "Upgrade Exceptional Armor to Elite", type: "Upgrading", inputs: [{ type: 'rune', name: 'Ko', count: 1 }, { type: 'rune', name: 'Lem', count: 1 }, { type: 'gem', name: 'Perfect Diamond', count: 1 }, { type: 'item', name: 'Exceptional Armor' }], result: "Elite Version of Armor (Ladder Only)" },
+            { name: "Upgrade Rare Weapon (Normal -> Exceptional)", type: "Upgrading", inputs: [{ type: 'rune', name: 'Ort', count: 1 }, { type: 'rune', name: 'Amn', count: 1 }, { type: 'gem', name: 'Perfect Sapphire', count: 1 }, { type: 'item', name: 'Normal Rare Weapon' }], result: "Exceptional Rare Version" },
+            { name: "Upgrade Rare Armor (Normal -> Exceptional)", type: "Upgrading", inputs: [{ type: 'rune', name: 'Ral', count: 1 }, { type: 'rune', name: 'Thul', count: 1 }, { type: 'gem', name: 'Perfect Amethyst', count: 1 }, { type: 'item', name: 'Normal Rare Armor' }], result: "Exceptional Rare Version" },
+            { name: "Upgrade Rare Weapon (Exceptional -> Elite)", type: "Upgrading", inputs: [{ type: 'rune', name: 'Fal', count: 1 }, { type: 'rune', name: 'Um', count: 1 }, { type: 'gem', name: 'Perfect Sapphire', count: 1 }, { type: 'item', name: 'Exceptional Rare Weapon' }], result: "Elite Rare Version" },
+            { name: "Upgrade Rare Armor (Exceptional -> Elite)", type: "Upgrading", inputs: [{ type: 'rune', name: 'Ko', count: 1 }, { type: 'rune', 'name': 'Pul', count: 1 }, { type: 'gem', name: 'Perfect Amethyst', count: 1 }, { type: 'item', name: 'Exceptional Rare Armor' }], result: "Elite Rare Version" },
+            // Crafting Recipes (Examples - Blood, Caster, Safety, Hit Power)
+            { name: "Craft Blood Amulet", type: "Crafting", inputs: [{ type: 'item', name: 'Magic Amulet' }, { type: 'rune', name: 'Amn', count: 1 }, { type: 'gem', name: 'Perfect Ruby', count: 1 }, { type: 'item', name: 'Jewel', desc: '(Any)' }], result: "Blood Amulet (Faster Run/Walk, Life Leech, +Life)" }, // Note: Jewel/Base Item not tracked
+            { name: "Craft Caster Boots", type: "Crafting", inputs: [{ type: 'item', name: 'Magic Boots' }, { type: 'rune', name: 'Thul', count: 1 }, { type: 'gem', name: 'Perfect Amethyst', count: 1 }, { type: 'item', name: 'Jewel', desc: '(Any)' }], result: "Caster Boots (+Max Mana, Mana Regen)" }, // Note: Jewel/Base Item not tracked
+            { name: "Craft Safety Shield", type: "Crafting", inputs: [{ type: 'item', name: 'Magic Shield' }, { type: 'rune', name: 'Ith', count: 1 }, { type: 'gem', name: 'Perfect Emerald', count: 1 }, { type: 'item', name: 'Jewel', desc: '(Any)' }], result: "Safety Shield (+Defense, Magic Resist, Dmg Reduced)" }, // Note: Jewel/Base Item not tracked
+            { name: "Craft Hit Power Gloves", type: "Crafting", inputs: [{ type: 'item', name: 'Magic Chain Gloves/Heavy Bracers/Vambraces' }, { type: 'rune', name: 'Ort', count: 1 }, { type: 'gem', name: 'Perfect Sapphire', count: 1 }, { type: 'item', name: 'Jewel', desc: '(Any)' }], result: "Hit Power Gloves (Knockback, Attack Rating)" }, // Note: Jewel/Base Item not tracked
+            // Other Useful Recipes
+            { name: "Remove Sockets", type: "Other", inputs: [{ type: 'rune', name: 'Hel', count: 1 }, { type: 'item', name: 'Scroll of Town Portal' }, { type: 'item', name: 'Socketed Item' }], result: "Same Item Unsocked (Gems/Runes Destroyed)" }, // Note: TP scroll not tracked
+            { name: "Token of Absolution", type: "Other", inputs: [{ type: 'item', name: 'Twisted Essence of Suffering', desc: '(Andariel/Duriel)'}, { type: 'item', name: 'Charged Essence of Hatred', desc: '(Mephisto)'}, { type: 'item', name: 'Burning Essence of Terror', desc: '(Diablo)'}, { type: 'item', name: 'Festering Essence of Destruction', desc: '(Baal)'}], result: "Token of Absolution (Respec Stats/Skills)" }, // Note: Essences not tracked
+            { name: "Cow Level Portal", type: "Other", inputs: [{ type: 'item', name: 'Wirt\'s Leg', desc: '(Tristram)'}, { type: 'item', name: 'Tome of Town Portal'}], result: "Portal to the Secret Cow Level (In Rogue Encampment)" }, // Note: Leg/Tome not tracked
+            { name: "3 Health Potions + 3 Mana Potions", type: "Other", inputs: [{ type: 'item', name: 'Health Potion', count: 3, desc: '(Any size)' }, { type: 'item', name: 'Mana Potion', count: 3, desc: '(Any size)' }], result: "1 Rejuvenation Potion" }, // Note: Potions not tracked
+            { name: "3 Rejuvenation Potions", type: "Other", inputs: [{ type: 'item', name: 'Rejuvenation Potion', count: 3 }], result: "1 Full Rejuvenation Potion" }, // Note: Potions not tracked
+        ];
+
+
+        // --- STATE VARIABLES ---
+        let runeCounts = {};
+        let gemCounts = {};
+        let showAllUpgrades = false;
+        let showAllRunewords = false;
+        let showAllCubeRecipes = false; // Initialize to false, button text will be "Show All"
+        let baseRuneCostCache = {};
+        let runewordSortCriteria = 'alphabetical';
+        let runewordItemFilter = 'all';
+        let cubeRecipeTypeFilter = 'all'; // New filter state
+
+        // --- DOM ELEMENT REFERENCES ---
+        // (Declare variables for DOM elements)
+        let runeListElement, gemListElement, runewordOutputElement, upgradeOutputElement, cubeRecipeDisplayElement, // New element reference
+            searchInputElement, cubeRecipeSearchInputElement, // New element reference
+            tooltipElement,
+            toggleAllUpgradesBtn, toggleAllRunewordsBtn, toggleAllCubeRecipesBtn, // New element reference
+            inventoryColumnElement, runewordsColumnElement, upgradesColumnElement, cubeRecipesColumnElement, // New element reference
+            possibleRunewordsElement, possibleUpgradesElement, cubeRecipeOutputElement, // New element reference
+            tabControlsElement, upgradesTitleElement,
+            runewordSortSelectElement, runewordItemFilterSelectElement, cubeRecipeTypeFilterSelectElement, // New element reference
+            resetButtonElement,
+            runesTabButton, gemsTabButton, cubeRecipesTabButton, // New element reference
+            runesTabPanel, gemsTabPanel, cubeRecipesTabPanel; // New element reference
+
+
+        // --- LOCAL STORAGE FUNCTIONS ---
+        // (loadCounts and saveCounts functions remain the same)
+        function loadCounts() { const savedData = localStorage.getItem('d2rTrackerCounts_MetalSkatan'); let loadedRunes = {}; let loadedGems = {}; if (savedData) { try { const parsed = JSON.parse(savedData); if (parsed && typeof parsed === 'object' && parsed.runes && parsed.gems) { loadedRunes = parsed.runes; loadedGems = parsed.gems; } else { console.warn("Invalid data format in localStorage. Resetting counts."); } } catch (error) { console.error("Error parsing localStorage:", error); } } runesData.forEach(rune => { const savedCount = loadedRunes[rune.name]; runeCounts[rune.name] = (typeof savedCount === 'number' && savedCount >= 0) ? savedCount : 0; }); gemsData.forEach(gem => { const savedCount = loadedGems[gem.name]; gemCounts[gem.name] = (typeof savedCount === 'number' && savedCount >= 0) ? savedCount : 0; }); }
+        function saveCounts() { try { const dataToSave = { runes: runeCounts, gems: gemCounts }; localStorage.setItem('d2rTrackerCounts_MetalSkatan', JSON.stringify(dataToSave)); } catch (error) { console.error("Error saving to localStorage:", error); alert("Error saving counts. Your changes might not persist."); } }
+
+        // --- ITEM COUNT UPDATE FUNCTIONS ---
+        // (updateRuneDisplay, incrementRune, decrementRune, updateGemDisplay, incrementGem, decrementGem functions remain the same)
+        function updateRuneDisplay(runeName) { const el = document.getElementById(`count-rune-${runeName}`); if (el) { el.textContent = runeCounts[runeName] || 0; } else { console.warn(`Display element not found for rune: ${runeName}`); } }
+        function incrementRune(runeName) { runeCounts[runeName] = (runeCounts[runeName] || 0) + 1; updateRuneDisplay(runeName); updatePossibleResults(); saveCounts(); }
+        function decrementRune(runeName) { if (runeCounts[runeName] > 0) { runeCounts[runeName]--; updateRuneDisplay(runeName); updatePossibleResults(); saveCounts(); } }
+        function updateGemDisplay(gemName) { const safeId = gemName.replace(/\s+/g, '-'); const el = document.getElementById(`count-gem-${safeId}`); if (el) { el.textContent = gemCounts[gemName] || 0; } else { console.warn(`Display element not found for gem: ${gemName} (ID: count-gem-${safeId})`); } }
+        function incrementGem(gemName) { gemCounts[gemName] = (gemCounts[gemName] || 0) + 1; updateGemDisplay(gemName); updatePossibleResults(); saveCounts(); }
+        function decrementGem(gemName) { if (gemCounts[gemName] > 0) { gemCounts[gemName]--; updateGemDisplay(gemName); updatePossibleResults(); saveCounts(); } }
+
+        // --- CRAFTING & UPGRADE LOGIC ---
+        // (canMakeRuneword, makeRuneword, canPerformRuneUpgrade, performRuneUpgrade, canPerformGemUpgrade, performGemUpgrade, calculateMaxPossible, calculateBaseRuneCost functions remain the same)
+        function canMakeRuneword(runeword) { if (!runeword || !Array.isArray(runeword.runes)) return false; const needed = {}; runeword.runes.forEach(r => needed[r] = (needed[r] || 0) + 1); for (const runeName in needed) { if (!runeCounts[runeName] || runeCounts[runeName] < needed[runeName]) { return false; } } return true; }
+        function makeRuneword(runewordName) { const rw = runewordsData.find(r => r.name === runewordName); if (!rw) { console.error(`Runeword data not found for: ${runewordName}`); alert(`Error: Runeword data not found for ${runewordName}.`); return; } if (!canMakeRuneword(rw)) { alert(`Cannot make ${runewordName}. Check rune counts.`); updatePossibleResults(); return; } rw.runes.forEach(runeName => { if (runeCounts[runeName] > 0) { runeCounts[runeName]--; updateRuneDisplay(runeName); } else { console.error(`Error making ${rw.name}: Tried to decrement ${runeName} below zero.`); } }); saveCounts(); updatePossibleResults(); }
+        function canPerformRuneUpgrade(recipe) { if (!recipe || !Array.isArray(recipe.inputs)) return false; for (const input of recipe.inputs) { if (!input || !input.name || typeof input.count !== 'number' || input.count <= 0) { console.warn("Invalid input in rune recipe:", recipe); return false; } if (!runeCounts[input.name] || runeCounts[input.name] < input.count) { return false; } } if (recipe.gem && (!gemCounts[recipe.gem] || gemCounts[recipe.gem] < 1)) { return false; } return true; }
+        function performRuneUpgrade(outputRuneName) { const recipe = runeUpgradeRecipes.find(r => r.output === outputRuneName); if (!recipe) { console.error(`Upgrade recipe not found for: ${outputRuneName}`); alert(`Error: Upgrade recipe not found for ${outputRuneName}.`); return; } if (!canPerformRuneUpgrade(recipe)) { let alertMsg = `Cannot perform upgrade to ${outputRuneName}. Check counts.`; if (recipe.gem && (!gemCounts[recipe.gem] || gemCounts[recipe.gem] < 1)) { alertMsg = `Cannot perform upgrade to ${outputRuneName}. Requires 1 ${recipe.gem}.`; } alert(alertMsg); updatePossibleResults(); return; } recipe.inputs.forEach(input => { if (runeCounts[input.name] >= input.count) { runeCounts[input.name] -= input.count; updateRuneDisplay(input.name); } else { console.error(`Error upgrading to ${outputRuneName}: Not enough ${input.name} during deduction.`); } }); if (recipe.gem) { if (gemCounts[recipe.gem] >= 1) { gemCounts[recipe.gem]--; updateGemDisplay(recipe.gem); } else { console.error(`Error upgrading to ${outputRuneName}: Not enough ${recipe.gem} during deduction.`); } } runeCounts[recipe.output] = (runeCounts[recipe.output] || 0) + 1; updateRuneDisplay(recipe.output); saveCounts(); updatePossibleResults(); }
+        function canPerformGemUpgrade(recipe) { if (!recipe || !Array.isArray(recipe.inputs)) return false; for (const input of recipe.inputs) { if (!input || !input.name || typeof input.count !== 'number' || input.count <= 0) { console.warn("Invalid input in gem recipe:", recipe); return false; } if (!gemCounts[input.name] || gemCounts[input.name] < input.count) { return false; } } return true; }
+        function performGemUpgrade(outputGemName) { const recipe = gemUpgradeRecipes.find(r => r.output === outputGemName); if (!recipe) { console.error(`Upgrade recipe not found for: ${outputGemName}`); alert(`Error: Upgrade recipe not found for ${outputGemName}.`); return; } const inputGemName = recipe.inputs[0]?.name; const inputCount = recipe.inputs[0]?.count; if (!inputGemName || !inputCount) { console.error(`Invalid recipe structure for gem upgrade: ${outputGemName}`); alert(`Error: Invalid recipe for ${outputGemName}.`); return; } if (!canPerformGemUpgrade(recipe)) { alert(`Cannot perform upgrade to ${outputGemName}. Need ${inputCount}x ${inputGemName}.`); updatePossibleResults(); return; } if (gemCounts[inputGemName] >= inputCount) { gemCounts[inputGemName] -= inputCount; updateGemDisplay(inputGemName); } else { console.error(`Error upgrading to ${outputGemName}: Not enough ${inputGemName} during deduction.`); } gemCounts[recipe.output] = (gemCounts[recipe.output] || 0) + 1; updateGemDisplay(recipe.output); saveCounts(); updatePossibleResults(); }
+        function calculateMaxPossible(recipe, recipeType) { // Updated to handle generic item types
+            if (!recipe || !recipe.inputs) return 0;
+            let maxPossible = Infinity;
+
+            for (const input of recipe.inputs) {
+                const neededCount = input.count || 1; // Default to 1 if count is missing
+                let availableCount = 0;
+
+                if (input.type === 'rune') {
+                    availableCount = runeCounts[input.name] || 0;
+                } else if (input.type === 'gem') {
+                    availableCount = gemCounts[input.name] || 0;
+                } else if (input.type === 'item') {
+                    // For items not tracked (like scrolls, keys, specific uniques, base items),
+                    // assume infinite supply for calculation if rune/gem requirements are met.
+                    // If you were tracking these, you'd check their counts here.
+                    availableCount = Infinity;
+                } else {
+                     // Handle potential recipe errors where type is missing/incorrect
+                     console.warn(`Unknown input type "${input.type}" in recipe: ${recipe.name}`);
+                     availableCount = 0; // Assume none available if type is unknown
+                }
+
+                // Check for gem requirement specifically in rune upgrade recipes
+                if (recipeType === 'rune' && recipe.gem && input.type !== 'gem') { // Check the separate 'gem' property
+                   if (!gemCounts[recipe.gem] || gemCounts[recipe.gem] < 1) {
+                       return 0; // Cannot make any if the required gem is missing
+                   }
+                }
+
+                if (neededCount <= 0) return 0; // Invalid recipe input count
+
+                 // Don't divide by Infinity for non-tracked items
+                const possibleFromThisInput = (availableCount === Infinity) ? Infinity : Math.floor(availableCount / neededCount);
+                maxPossible = Math.min(maxPossible, possibleFromThisInput);
+            }
+
+
+             // Final check for the separate 'gem' property in rune upgrades (redundant but safe)
+             if (recipeType === 'rune' && recipe.gem) {
+                 if (!gemCounts[recipe.gem] || gemCounts[recipe.gem] < 1) {
+                     maxPossible = 0;
+                 }
+             }
+
+
+            return (maxPossible === Infinity) ? 0 : maxPossible; // Return 0 if any required item had 0 possibility
+        }
+        function calculateBaseRuneCost(targetRuneName) { if (targetRuneName === 'El') { return 1; } if (baseRuneCostCache[targetRuneName] !== undefined) { return baseRuneCostCache[targetRuneName]; } const recipe = runeUpgradeRecipes.find(r => r.output === targetRuneName); if (!recipe) { console.warn(`No upgrade recipe found for base cost calculation: ${targetRuneName}`); baseRuneCostCache[targetRuneName] = 0; return 0; } let totalCost = 0; for (const input of recipe.inputs) { const inputCost = calculateBaseRuneCost(input.name); if (inputCost === 0 && input.name !== 'El') { baseRuneCostCache[targetRuneName] = 0; return 0; } totalCost += inputCost * input.count; } baseRuneCostCache[targetRuneName] = totalCost; return totalCost; }
+
+         // --- NEW: Check if Cube Recipe materials (Runes/Gems) are available ---
+         function canMakeCubeRecipe(recipe) {
+             if (!recipe || !Array.isArray(recipe.inputs)) {
+                 console.warn("Invalid cube recipe object passed to canMakeCubeRecipe:", recipe);
+                 return false;
+             }
+             for (const input of recipe.inputs) {
+                 const neededCount = input.count || 1; // Assume 1 if count is not specified
+                 if (input.type === 'rune') {
+                     if (!runeCounts[input.name] || runeCounts[input.name] < neededCount) {
+                         return false; // Not enough runes
+                     }
+                 } else if (input.type === 'gem') {
+                     if (!gemCounts[input.name] || gemCounts[input.name] < neededCount) {
+                         return false; // Not enough gems
+                     }
+                      // Handle generic gem requirements (e.g., "1 Flawed Gem") - simplistic check
+                      // This assumes user has *at least one* of *any* flawed gem if name is generic
+                      else if (input.name.includes(' Gem') && !gemNameMap[input.name]) {
+                           let hasAnyGemOfQuality = false;
+                           const qualityMatch = input.name.match(/^(Chipped|Flawed|Normal|Flawless|Perfect)/);
+                           if (qualityMatch) {
+                               const quality = qualityMatch[0];
+                               for (const gemFullName in gemCounts) {
+                                   if (gemFullName.startsWith(quality) && gemCounts[gemFullName] >= neededCount) {
+                                       hasAnyGemOfQuality = true;
+                                       break;
+                                   }
+                               }
+                           }
+                           if (!hasAnyGemOfQuality) return false; // Didn't find any gem of the required quality
+                      }
+                 } else if (input.type === 'item') {
+                     // Currently, we don't track base items, scrolls, keys, etc.
+                     // Assume the user has these if the runes/gems are present.
+                     // For a more complete implementation, you would check counts here.
+                     continue; // Assume available
+                 } else {
+                     console.warn(`Unknown input type "${input.type}" in recipe: ${recipe.name}`);
+                     return false; // Cannot make if input type is unknown
+                 }
+             }
+             // If all rune/gem checks passed (and item checks are skipped/passed)
+             return true;
+         }
+
+         // --- NEW: Function to deduct materials (Placeholder) ---
+         function deductCubeRecipeMaterials(recipeName) {
+             const recipe = cubeRecipesData.find(r => r.name === recipeName);
+             if (!recipe) {
+                 console.error(`Cannot deduct materials: Recipe "${recipeName}" not found.`);
+                 return;
+             }
+             if (!canMakeCubeRecipe(recipe)) {
+                 console.warn(`Attempted to deduct materials for recipe "${recipeName}" but cannot make it.`);
+                 return; // Don't deduct if cannot make
+             }
+
+             console.log(`Simulating deduction for recipe: ${recipeName}`);
+             recipe.inputs.forEach(input => {
+                 const neededCount = input.count || 1;
+                 if (input.type === 'rune') {
+                     if (runeCounts[input.name] >= neededCount) {
+                         runeCounts[input.name] -= neededCount;
+                         updateRuneDisplay(input.name);
+                         console.log(`  - Deducted ${neededCount}x ${input.name}`);
+                     } else {
+                         console.error(`Error deducting ${input.name} for ${recipeName}. Not enough count.`);
+                     }
+                 } else if (input.type === 'gem') {
+                     // Simple deduction - doesn't handle the "Any Flawed Gem" case accurately yet
+                     if (gemCounts[input.name] >= neededCount) {
+                         gemCounts[input.name] -= neededCount;
+                         updateGemDisplay(input.name);
+                         console.log(`  - Deducted ${neededCount}x ${input.name}`);
+                     } else {
+                         // Need more complex logic for "Any Gem" types if implementing full deduction
+                         console.log(`  - Skipped deduction for ${input.name} (specific or generic gem logic needed)`);
+                     }
+                 }
+                 // Add 'item' deduction logic if item tracking is implemented
+             });
+             saveCounts(); // Save counts after potential deductions
+             updatePossibleResults(); // Update display
+             alert(`Used recipe: ${recipeName}\n(Material deduction simulated in console)`);
+         }
+
+
+        // --- VIEW TOGGLE FUNCTIONS ---
+        // (toggleUpgradeView and toggleRunewordView functions remain the same)
+        function toggleUpgradeView() { showAllUpgrades = !showAllUpgrades; updatePossibleResults(); if (toggleAllUpgradesBtn) { toggleAllUpgradesBtn.textContent = showAllUpgrades ? 'Show Possible' : 'Show All'; toggleAllUpgradesBtn.classList.toggle('toggle-show-all', !showAllUpgrades); toggleAllUpgradesBtn.classList.toggle('toggle-show-possible', showAllUpgrades); toggleAllUpgradesBtn.setAttribute('aria-pressed', showAllUpgrades); } }
+        function toggleRunewordView() { showAllRunewords = !showAllRunewords; updatePossibleResults(); if (toggleAllRunewordsBtn) { toggleAllRunewordsBtn.textContent = showAllRunewords ? 'Show Possible' : 'Show All'; toggleAllRunewordsBtn.classList.toggle('toggle-show-all', !showAllRunewords); toggleAllRunewordsBtn.classList.toggle('toggle-show-possible', showAllRunewords); toggleAllRunewordsBtn.setAttribute('aria-pressed', showAllRunewords); } }
+
+        // --- NEW: Cube Recipe View Toggle ---
+        function toggleCubeRecipeView() {
+            showAllCubeRecipes = !showAllCubeRecipes;
+            updatePossibleResults(); // Re-render the list
+            if (toggleAllCubeRecipesBtn) {
+                // Text should be opposite of the state: If showing all, button offers "Show Have Mats"
+                toggleAllCubeRecipesBtn.textContent = showAllCubeRecipes ? 'Show Have Mats' : 'Show All';
+                // Apply classes accordingly
+                toggleAllCubeRecipesBtn.classList.toggle('toggle-show-all', !showAllCubeRecipes); // 'Show All' style when state is false
+                toggleAllCubeRecipesBtn.classList.toggle('toggle-show-possible', showAllCubeRecipes); // 'Show Possible/Have Mats' style when state is true
+                toggleAllCubeRecipesBtn.setAttribute('aria-pressed', showAllCubeRecipes);
+            }
+        }
+
+
+        // --- TAB SWITCHING FUNCTION ---
+        // (Modified to include the Cube Recipes tab)
+        function switchTab(event) {
+            const clickedButton = event.currentTarget;
+            if (clickedButton.classList.contains('active')) {
+                return; // Already active
+            }
+
+            // Determine target panel ID from button's data attribute
+            const targetId = clickedButton.dataset.target;
+            const targetPanel = document.getElementById(targetId);
+
+            if (!targetPanel) {
+                console.error(`Target panel not found for tab: ${targetId}`);
+                return;
+            }
+
+            // Deactivate all tab buttons and panels
+            const allTabButtons = tabControlsElement.querySelectorAll('.tab-btn');
+            const allTabPanels = inventoryColumnElement.querySelectorAll('.tab-content'); // Select panels within inventory column
+
+            allTabButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+                btn.setAttribute('tabindex', '-1');
+            });
+
+            allTabPanels.forEach(panel => {
+                panel.classList.remove('active');
+                panel.hidden = true;
+            });
+
+            // Activate the clicked button and its corresponding panel
+            clickedButton.classList.add('active');
+            clickedButton.setAttribute('aria-selected', 'true');
+            clickedButton.removeAttribute('tabindex');
+
+            targetPanel.classList.add('active');
+            targetPanel.hidden = false;
+
+             // Show/hide the appropriate result columns based on the active tab
+             const isRunesTabActive = (clickedButton.id === 'runes-tab-btn');
+             const isGemsTabActive = (clickedButton.id === 'gems-tab-btn');
+             const isCubeTabActive = (clickedButton.id === 'cube-recipes-tab-btn');
+
+             // Use requestAnimationFrame to defer style changes until after layout update
+             requestAnimationFrame(() => {
+                 if (runewordsColumnElement) runewordsColumnElement.style.display = isRunesTabActive ? '' : 'none';
+                 if (upgradesColumnElement) upgradesColumnElement.style.display = (isRunesTabActive || isGemsTabActive) ? '' : 'none';
+                 if (cubeRecipesColumnElement) cubeRecipesColumnElement.style.display = isCubeTabActive ? '' : 'none';
+
+                 // Adjust upgrade title based on Gems or Runes tab
+                 if (upgradesTitleElement) {
+                      upgradesTitleElement.textContent = isGemsTabActive ? "Possible Gem Upgrades" : "Possible Rune Upgrades";
+                 }
+
+                 updatePossibleResults(); // Update content based on new active tab
+                 adjustColumnHeights(); // Adjust heights after content change and display update
+             });
+        }
+
+
+        // --- DYNAMIC HEIGHT ADJUSTMENT ---
+        // (Modified to potentially include cube recipe column height)
+        function adjustColumnHeights() {
+             // Check if essential elements exist
+             const requiredElements = [
+                 inventoryColumnElement,
+                 runewordsColumnElement,
+                 upgradesColumnElement,
+                 cubeRecipesColumnElement, // Added
+                 possibleRunewordsElement,
+                 possibleUpgradesElement,
+                 cubeRecipeOutputElement, // Added
+                 tabControlsElement // Check for tab controls to determine active state
+             ];
+             if (requiredElements.some(el => !el)) {
+                 console.warn("Skipping height adjustment: One or more column or output elements not found.");
+                 return;
+             }
+
+             const columnsStacked = window.innerWidth <= 900;
+             if (columnsStacked) {
+                 // Reset heights for stacked view
+                 possibleRunewordsElement.style.height = '45vh';
+                 possibleUpgradesElement.style.height = '45vh';
+                 cubeRecipeOutputElement.style.height = '45vh'; // Added
+                 return;
+             }
+
+             // Find active tab to determine which columns are visible
+             const activeTabButton = tabControlsElement.querySelector('.tab-btn.active');
+             if (!activeTabButton) return; // No active tab, cannot adjust heights
+
+             const isRunesTabActive = (activeTabButton.id === 'runes-tab-btn');
+             const isGemsTabActive = (activeTabButton.id === 'gems-tab-btn');
+             const isCubeTabActive = (activeTabButton.id === 'cube-recipes-tab-btn');
+
+             const inventoryHeight = inventoryColumnElement.offsetHeight;
+             let targetHeight = Math.max(100, inventoryHeight); // Minimum height
+
+             // Function to calculate non-scrollable height of a section
+             const calculateNonScrollHeight = (sectionElement) => {
+                 const header = sectionElement.querySelector('.section-header');
+                 let nonScrollHeight = 0;
+                 if (header) {
+                     nonScrollHeight += header.offsetHeight + parseFloat(getComputedStyle(header).marginBottom || 0);
+                 }
+                 // Add section padding
+                 nonScrollHeight += parseFloat(getComputedStyle(sectionElement).paddingTop || 0) + parseFloat(getComputedStyle(sectionElement).paddingBottom || 0);
+                 return nonScrollHeight;
+             };
+
+             // Adjust Runewords height if visible
+             if (isRunesTabActive && runewordsColumnElement.style.display !== 'none') {
+                 const runewordNonScrollHeight = calculateNonScrollHeight(runewordsColumnElement);
+                 const runewordScrollHeight = Math.max(100, targetHeight - runewordNonScrollHeight);
+                 possibleRunewordsElement.style.height = `${runewordScrollHeight}px`;
+             }
+
+             // Adjust Upgrades height if visible
+             if ((isRunesTabActive || isGemsTabActive) && upgradesColumnElement.style.display !== 'none') {
+                 const upgradeNonScrollHeight = calculateNonScrollHeight(upgradesColumnElement);
+                 const upgradeScrollHeight = Math.max(100, targetHeight - upgradeNonScrollHeight);
+                 possibleUpgradesElement.style.height = `${upgradeScrollHeight}px`;
+             }
+
+             // Adjust Cube Recipes height if visible
+             if (isCubeTabActive && cubeRecipesColumnElement.style.display !== 'none') {
+                 const cubeRecipeNonScrollHeight = calculateNonScrollHeight(cubeRecipesColumnElement);
+                 const cubeRecipeScrollHeight = Math.max(100, targetHeight - cubeRecipeNonScrollHeight);
+                 cubeRecipeOutputElement.style.height = `${cubeRecipeScrollHeight}px`;
+             }
+         }
+
+
+        // --- DISPLAY UPDATE (MAIN RENDER FUNCTION) ---
+        // (Modified to include cube recipes)
+        function updatePossibleResults() {
+            // Check for essential elements needed for rendering
+            if (!runewordOutputElement || !upgradeOutputElement || !cubeRecipeDisplayElement || // Added cube recipe display
+                !searchInputElement || !cubeRecipeSearchInputElement || // Added cube recipe search
+                !tabControlsElement || !upgradesTitleElement) {
+                console.error("Cannot update results: Essential display or input elements missing.");
+                return;
+            }
+
+            const activeTabButton = tabControlsElement.querySelector('.tab-btn.active');
+            if (!activeTabButton) return; // No active tab
+
+            const isRunesTabActive = (activeTabButton.id === 'runes-tab-btn');
+            const isGemsTabActive = (activeTabButton.id === 'gems-tab-btn');
+            const isCubeTabActive = (activeTabButton.id === 'cube-recipes-tab-btn');
+
+            // Clear previous results
+            runewordOutputElement.innerHTML = '';
+            upgradeOutputElement.innerHTML = '';
+            cubeRecipeDisplayElement.innerHTML = ''; // Clear cube recipe output
+
+            // Display based on active tab
+            if (isRunesTabActive) {
+                const runewordSearchTerm = searchInputElement.value.toLowerCase().trim();
+                displayRunewords(runewordSearchTerm);
+                displayRuneUpgrades();
+                if (upgradesTitleElement) upgradesTitleElement.textContent = "Possible Rune Upgrades"; // Ensure correct title
+            } else if (isGemsTabActive) {
+                // Runewords column is hidden, upgrades column shows gem upgrades
+                displayGemUpgrades();
+                 if (upgradesTitleElement) upgradesTitleElement.textContent = "Possible Gem Upgrades"; // Ensure correct title
+            } else if (isCubeTabActive) {
+                // Runewords and Upgrades columns are hidden, Cube Recipes column is active
+                const cubeRecipeSearchTerm = cubeRecipeSearchInputElement.value.toLowerCase().trim();
+                displayCubeRecipes(cubeRecipeSearchTerm); // Call the new display function
+            }
+
+            // Adjust heights after content is potentially updated
+            requestAnimationFrame(adjustColumnHeights);
+        }
+
+
+        // --- RUNE HIGHLIGHTING FUNCTIONS ---
+        // (highlightNeededRunes and unhighlightAllRunes functions remain the same)
+        function highlightNeededRunes(neededRunes) { if (!Array.isArray(neededRunes) || !runeListElement) return; unhighlightAllRunes(); neededRunes.forEach(runeName => { const runeItemDiv = runeListElement.querySelector(`.rune-item[data-rune-name="${runeName}"]`); if (runeItemDiv) { runeItemDiv.classList.add('rune-highlighted'); } }); }
+        function unhighlightAllRunes() { if (!runeListElement) return; const highlightedRunes = runeListElement.querySelectorAll('.rune-item.rune-highlighted'); highlightedRunes.forEach(runeDiv => { runeDiv.classList.remove('rune-highlighted'); }); }
+
+        // --- HELPER FUNCTIONS ---
+        // (getRunewordLevel and createNoResultsMessage functions remain the same)
+        function getRunewordLevel(rw) { if (!rw || !rw.info) return 999; const match = rw.info.match(/LvL\s*(\d+)/i); return match ? parseInt(match[1], 10) : 999; }
+        function createNoResultsMessage(message) { const li = document.createElement('li'); li.style.border = 'none'; li.style.background = 'none'; li.style.color = 'var(--d2-text-dark)'; li.style.padding = '15px'; li.style.display = 'block'; li.style.textAlign = 'center'; li.style.opacity = '0.8'; li.textContent = message; return li; }
+
+        // --- DISPLAY FUNCTIONS FOR RESULTS ---
+        // (displayRunewords, displayRuneUpgrades, displayGemUpgrades functions remain largely the same)
+        function displayRunewords(searchTerm) {
+             if (!runewordOutputElement) return;
+             runewordOutputElement.innerHTML = ''; // Clear previous
+             let displayedRunewordsCount = 0;
+             const itemFilteredRunewords = runewordsData.filter(rw => { if (!rw?.name || !Array.isArray(rw.runes) || !rw.itemTypes) return false; if (runewordItemFilter === 'all') return true; return rw.itemTypes.toLowerCase().includes(runewordItemFilter.toLowerCase()); });
+             const sortedRunewords = itemFilteredRunewords.sort((a, b) => { switch (runewordSortCriteria) { case 'level': const levelA = getRunewordLevel(a); const levelB = getRunewordLevel(b); return levelA !== levelB ? levelA - levelB : a.name.localeCompare(b.name); case 'num_runes': const numRunesA = a.runes.length; const numRunesB = b.runes.length; return numRunesA !== numRunesB ? numRunesA - numRunesB : a.name.localeCompare(b.name); default: return a.name.localeCompare(b.name); } });
+             sortedRunewords.forEach(rw => {
+                 const canMake = canMakeRuneword(rw);
+                 const statsText = rw.stats ? rw.stats.replace(/<br>/g, ' ').toLowerCase() : '';
+                 const nameText = rw.name.toLowerCase();
+                 const recipeText = rw.runes.join(' ').toLowerCase();
+                 const matchesSearch = !searchTerm || nameText.includes(searchTerm) || statsText.includes(searchTerm) || recipeText.includes(searchTerm);
+                 let shouldShow;
+                 if (searchTerm) { shouldShow = matchesSearch; } else { shouldShow = showAllRunewords || canMake; }
+                 if (shouldShow) {
+                     displayedRunewordsCount++;
+                     const li = document.createElement('li');
+                     li.classList.add(canMake ? 'can-make' : 'cannot-make');
+                     let missingRunesHtml = '';
+                     if (!canMake && (showAllRunewords || searchTerm)) { const needed = {}; rw.runes.forEach(r => { needed[r] = (needed[r] || 0) + 1; }); const missingList = []; for (const r in needed) { const have = runeCounts[r] || 0; const req = needed[r]; if (have < req) { missingList.push(`${req - have} x ${r}`); } } if (missingList.length > 0) { missingRunesHtml = `<div class="missing-runes">Missing: ${missingList.join(', ')}</div>`; } }
+                     li.innerHTML = ` <div class="content"> <span class="result-name">${rw.name}</span> <span class="result-recipe">(${rw.runes.join(' + ')})</span> <div class="result-info">${rw.itemTypes || 'N/A'} - ${rw.info || ''}</div> ${missingRunesHtml} <div class="runeword-stats"><strong>Stats:</strong><br>${rw.stats ? rw.stats.replace(/<br>/g, '\n') : 'N/A'}</div> </div> <button class="craft-btn runeword-btn" data-runeword-name="${rw.name}" ${!canMake ? 'disabled' : ''} aria-label="Make ${rw.name}">Make It</button> `;
+                     li.addEventListener('mouseenter', () => highlightNeededRunes(rw.runes));
+                     li.addEventListener('mouseleave', unhighlightAllRunes);
+                     const craftButton = li.querySelector('.craft-btn');
+                     if (craftButton) { craftButton.addEventListener('click', (e) => { const nameToMake = e.currentTarget.dataset.runewordName; if (nameToMake) { makeRuneword(nameToMake); } }); }
+                     runewordOutputElement.appendChild(li);
+                 }
+             });
+             if (displayedRunewordsCount === 0) { let message = "No runewords found"; if (searchTerm) message += ` matching "${searchTerm}"`; if (runewordItemFilter !== 'all') message += ` for item type "${runewordItemFilter}"`; if (!searchTerm && !showAllRunewords && runewordItemFilter === 'all') { message = "You cannot currently make any runewords. Add runes or click 'Show All'."; } else if (!searchTerm && !showAllRunewords) { message += " that you can currently make."; } else { message += "."; } runewordOutputElement.appendChild(createNoResultsMessage(message)); }
+         }
+        function displayRuneUpgrades() { if (!upgradeOutputElement) return; upgradeOutputElement.innerHTML = ''; let possibleUpgradesFound = 0; const runeLevels = runesData.reduce((acc, rune, index) => { acc[rune.name] = rune.level || index + 1; return acc; }, {}); baseRuneCostCache = {}; runeUpgradeRecipes.filter(recipe => recipe?.output && Array.isArray(recipe.inputs)).sort((a, b) => (runeLevels[a.output] || 99) - (runeLevels[b.output] || 99)).forEach(recipe => { const canUpgrade = canPerformRuneUpgrade(recipe); const hasRequiredGem = !recipe.gem || (gemCounts[recipe.gem] && gemCounts[recipe.gem] >= 1); if (showAllUpgrades || canUpgrade) { possibleUpgradesFound++; const li = document.createElement('li'); li.classList.add(canUpgrade ? 'can-make' : 'cannot-make'); const inputsString = recipe.inputs.map(inp => `${inp.count} x ${inp.name}`).join(' + '); const gemInfo = recipe.gem ? ` + 1 ${recipe.gem}` : ''; const inputsNameString = recipe.inputs.map(inp => inp.name).join(' + '); const newResultName = `${inputsNameString} → ${recipe.output} Upgrade`; let missingGemHtml = ''; if (recipe.gem && !hasRequiredGem && (showAllUpgrades || !canUpgrade)) { missingGemHtml = `<div class="missing-gem">Missing: 1 x ${recipe.gem}</div>`; } const maxCraftable = calculateMaxPossible(recipe, 'rune'); let maxCraftableHtml = ''; if (maxCraftable > 0) { maxCraftableHtml = `<div class="max-craftable">Can Make: ${maxCraftable}</div>`; } const baseCost = calculateBaseRuneCost(recipe.output); const baseCostHtml = baseCost > 0 ? `<div class="base-rune-cost">Total El Cost: ${baseCost.toLocaleString()}</div>` : ''; li.innerHTML = ` <div class="content"> <span class="result-name">${newResultName}</span> <span class="result-recipe">(Requires: ${inputsString}${gemInfo})</span> <div class="result-info">Have Runes: ${recipe.inputs.map(inp => `${runeCounts[inp.name]||0}x${inp.name}`).join(', ')}</div> ${missingGemHtml} ${maxCraftableHtml} ${baseCostHtml} </div> <button class="craft-btn upgrade-btn" data-output-rune="${recipe.output}" ${!canUpgrade ? 'disabled' : ''} aria-label="Upgrade to ${recipe.output}">Upgrade</button> `; const upgradeButton = li.querySelector('.craft-btn'); if (upgradeButton) { upgradeButton.addEventListener('click', (e) => { const nameToUpgrade = e.currentTarget.dataset.outputRune; if (nameToUpgrade) { performRuneUpgrade(nameToUpgrade); } }); } upgradeOutputElement.appendChild(li); } }); if (possibleUpgradesFound === 0) { let message = ""; if (!showAllUpgrades) { message = "No rune upgrades possible with current runes/gems. Click 'Show All' to see recipes."; } else { message = "No rune upgrade recipes defined or found."; } upgradeOutputElement.appendChild(createNoResultsMessage(message)); } }
+        function displayGemUpgrades() { if (!upgradeOutputElement) return; upgradeOutputElement.innerHTML = ''; let possibleUpgradesFound = 0; const qualityOrder = { 'Chipped': 1, 'Flawed': 2, 'Normal': 3, 'Flawless': 4, 'Perfect': 5 }; gemUpgradeRecipes.sort((a, b) => { const qualityA = gemNameMap[a.output]?.quality || 'Perfect'; const qualityB = gemNameMap[b.output]?.quality || 'Perfect'; return (qualityOrder[qualityA] || 99) - (qualityOrder[qualityB] || 99); }).forEach(recipe => { const canUpgrade = canPerformGemUpgrade(recipe); if (showAllUpgrades || canUpgrade) { possibleUpgradesFound++; const li = document.createElement('li'); li.classList.add(canUpgrade ? 'can-make' : 'cannot-make'); const inputGemName = recipe.inputs[0].name; const inputCount = recipe.inputs[0].count; const haveCount = gemCounts[inputGemName] || 0; const maxCraftable = calculateMaxPossible(recipe, 'gem'); let maxCraftableHtml = ''; if (maxCraftable > 0) { maxCraftableHtml = `<div class="max-craftable">Can Make: ${maxCraftable}</div>`; } li.innerHTML = `<div class="content"><span class="result-name">${inputCount} x ${inputGemName} → ${recipe.output}</span><span class="gem-result-recipe">(Upgrade Recipe)</span><div class="result-info">Have: ${haveCount} x ${inputGemName}</div>${maxCraftableHtml}</div><button class="craft-btn upgrade-btn" data-output-gem="${recipe.output}" ${!canUpgrade ? 'disabled' : ''} aria-label="Upgrade to ${recipe.output}">Upgrade</button>`; const upgradeButton = li.querySelector('.craft-btn'); if (upgradeButton) { upgradeButton.addEventListener('click', (e) => { const nameToUpgrade = e.currentTarget.dataset.outputGem; if (nameToUpgrade) { performGemUpgrade(nameToUpgrade); } }); } upgradeOutputElement.appendChild(li); } }); if (possibleUpgradesFound === 0) { let message = ""; if (!showAllUpgrades) { message = "No gem upgrades possible with current gems. Click 'Show All' to see recipes."; } else { message = "No gem upgrade recipes defined or found."; } upgradeOutputElement.appendChild(createNoResultsMessage(message)); } }
+
+        // --- Display Cube Recipes (Refined) ---
+        function displayCubeRecipes(searchTerm) {
+            if (!cubeRecipeDisplayElement) return;
+            cubeRecipeDisplayElement.innerHTML = ''; // Clear previous results
+            let displayedRecipesCount = 0;
+
+            const filteredRecipes = cubeRecipesData.filter(recipe => {
+                if (!recipe || !recipe.name || !Array.isArray(recipe.inputs)) return false;
+
+                // Filter by Type
+                if (cubeRecipeTypeFilter !== 'all' && recipe.type !== cubeRecipeTypeFilter) {
+                    return false;
+                }
+
+                // Filter by Search Term
+                if (searchTerm) {
+                    const nameMatch = recipe.name.toLowerCase().includes(searchTerm);
+                    const resultMatch = recipe.result?.toLowerCase().includes(searchTerm);
+                    const typeMatch = recipe.type?.toLowerCase().includes(searchTerm); // Also search type
+                    const inputMatch = recipe.inputs.some(input => {
+                        const inputName = input.name.toLowerCase();
+                        const inputDesc = input.desc?.toLowerCase() || '';
+                        return inputName.includes(searchTerm) || inputDesc.includes(searchTerm);
+                    });
+                    if (!nameMatch && !resultMatch && !inputMatch && !typeMatch) { // Check typeMatch too
+                        return false;
+                    }
+                }
+                return true; // Pass filters or no filters applied
+            }).sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+
+            filteredRecipes.forEach(recipe => {
+                const canMake = canMakeCubeRecipe(recipe); // Check if requirements are met
+
+                // Determine if the recipe should be shown based on the toggle state and if it can be made
+                // If 'Show All' is false, only show if canMake is true.
+                // If 'Show All' is true, show regardless of canMake.
+                let shouldShow = showAllCubeRecipes || canMake;
+
+                 if (shouldShow) {
+                     displayedRecipesCount++;
+                     const li = document.createElement('li');
+                     li.classList.add(canMake ? 'can-make' : 'cannot-make'); // Apply class based on possibility
+
+                     // Build input string with quantities
+                     const inputsString = recipe.inputs.map(inp => {
+                         const count = inp.count > 1 ? `${inp.count}x ` : '';
+                         const desc = inp.desc ? ` (${inp.desc})` : '';
+                         // Add styling hints based on type
+                         let nameSpan = inp.name;
+                         if (inp.type === 'rune') nameSpan = `<span style="color: var(--d2-rune-color);">${inp.name}</span>`;
+                         else if (inp.type === 'gem') nameSpan = `<span style="color: var(--d2-gem-color);">${inp.name}</span>`;
+                         else nameSpan = `<span style="color: var(--d2-text-light);">${inp.name}</span>`; // Default for items
+
+                         return `${count}${nameSpan}${desc}`;
+                     }).join(' + ');
+
+                     // Check for missing items (only show if 'Show All' is active and cannot make)
+                     let missingItemsHtml = '';
+                     if (!canMake && showAllCubeRecipes) {
+                         const missingList = [];
+                         recipe.inputs.forEach(input => {
+                            const neededCount = input.count || 1;
+                             if (input.type === 'rune') {
+                                 const have = runeCounts[input.name] || 0;
+                                 if (have < neededCount) {
+                                     missingList.push(`${neededCount - have} x ${input.name}`);
+                                 }
+                             } else if (input.type === 'gem') {
+                                 // Check specific gems first
+                                 if (gemNameMap[input.name]) {
+                                    const have = gemCounts[input.name] || 0;
+                                    if (have < neededCount) {
+                                        missingList.push(`${neededCount - have} x ${input.name}`);
+                                    }
+                                 }
+                                 // Handle generic gems (e.g., "1 Flawed Gem") - Check if *any* of that quality exists
+                                 else if (input.name.includes(' Gem')) {
+                                       let hasAnyGemOfQuality = false;
+                                       const qualityMatch = input.name.match(/^(Chipped|Flawed|Normal|Flawless|Perfect)/);
+                                       if (qualityMatch) {
+                                           const quality = qualityMatch[0];
+                                           for (const gemFullName in gemCounts) {
+                                               if (gemFullName.startsWith(quality) && gemCounts[gemFullName] >= neededCount) {
+                                                   hasAnyGemOfQuality = true;
+                                                   break;
+                                               }
+                                           }
+                                       }
+                                       if (!hasAnyGemOfQuality) missingList.push(`${neededCount}x ${input.name}`);
+                                 }
+                             }
+                             // Add logic for missing 'item' types here if you implement tracking
+                         });
+                         if (missingList.length > 0) {
+                             missingItemsHtml = `<div class="missing-items">Missing Mats: ${missingList.join(', ')}</div>`;
+                         }
+                     }
+
+
+                     li.innerHTML = `
+                         <div class="content">
+                             <span class="result-name">${recipe.name}</span>
+                             <div class="result-info">Type: ${recipe.type || 'N/A'}</div>
+                             <span class="cube-recipe-inputs">Inputs: ${inputsString}</span>
+                             ${missingItemsHtml}
+                             <div class="cube-recipe-result"><strong>Result:</strong> ${recipe.result}</div>
+                         </div>
+                         <button class="craft-btn cube-recipe-btn" data-recipe-name="${recipe.name}" ${!canMake ? 'disabled' : ''} aria-label="Use ${recipe.name} recipe">Use Recipe</button>
+                     `;
+
+                     // Add event listener for the button
+                     const useButton = li.querySelector('.cube-recipe-btn');
+                     if (useButton) {
+                        useButton.addEventListener('click', (e) => {
+                             const recipeNameToUse = e.currentTarget.dataset.recipeName;
+                             if (recipeNameToUse) {
+                                deductCubeRecipeMaterials(recipeNameToUse); // Call placeholder deduction
+                             }
+                         });
+                     }
+
+                     cubeRecipeDisplayElement.appendChild(li);
+                 }
+            });
+
+             if (displayedRecipesCount === 0) {
+                 let message = "No cube recipes found";
+                 if (searchTerm) message += ` matching "${searchTerm}"`;
+                 if (cubeRecipeTypeFilter !== 'all') message += ` of type "${cubeRecipeTypeFilter}"`;
+                 if (!searchTerm && !showAllCubeRecipes && cubeRecipeTypeFilter === 'all') {
+                     message = "No recipes found with current materials. Click 'Show All'.";
+                 } else if (!showAllCubeRecipes) {
+                     message += " that you have materials for.";
+                 } else {
+                    message += ".";
+                 }
+                 cubeRecipeDisplayElement.appendChild(createNoResultsMessage(message));
+             }
+        }
+
+
+        // --- TOOLTIP FUNCTIONS ---
+        // (showRuneTooltip and hideRuneTooltip functions remain the same)
+        function showRuneTooltip(event) { const item = event.currentTarget; if (!tooltipElement) return; const runeNameElement = item.querySelector('.rune-name'); const runeName = item.dataset.runeName || (runeNameElement ? runeNameElement.textContent.replace(/<img[^>]*>/g, "").trim() : 'Unknown Rune'); const runeData = runesData.find(r => r.name === runeName); let tooltipHtml = `<p><strong>${runeName}</strong></p>`; if (runeData) { tooltipHtml += `<p>Weapon: ${runeData.weaponEffect || 'N/A'}</p>`; tooltipHtml += `<p>Armor/Helm: ${runeData.armorHelmEffect || 'N/A'}</p>`; tooltipHtml += `<p>Shield: ${runeData.shieldEffect || 'N/A'}</p>`; } else { tooltipHtml += `<p>Effect data not found.</p>`; } tooltipElement.innerHTML = tooltipHtml; tooltipElement.style.display = 'block'; tooltipElement.setAttribute('aria-hidden', 'false'); const container = item.closest('.container'); if (!container) return; const containerRect = container.getBoundingClientRect(); const tooltipRect = tooltipElement.getBoundingClientRect(); let left = event.clientX - containerRect.left + 15; let top = event.clientY - containerRect.top + 15; if (left + tooltipRect.width > container.clientWidth - 10) { left = event.clientX - containerRect.left - tooltipRect.width - 15; } if (left < 10) { left = 10; } if (top + tooltipRect.height > container.clientHeight - 10) { top = event.clientY - containerRect.top - tooltipRect.height - 15; } if (top < 10) { top = 10; } tooltipElement.style.left = `${left}px`; tooltipElement.style.top = `${top}px`; }
+        function hideRuneTooltip() { if(tooltipElement) { tooltipElement.style.display = 'none'; tooltipElement.setAttribute('aria-hidden', 'true'); } }
+
+        // --- RESET FUNCTION ---
+        // (resetAllCounts function remains the same)
+        function resetAllCounts() { if (!confirm("Are you SURE you want to reset ALL rune AND gem counts to zero?\nThis action cannot be undone!")) { return; } runesData.forEach(rune => { runeCounts[rune.name] = 0; updateRuneDisplay(rune.name); }); gemsData.forEach(gem => { gemCounts[gem.name] = 0; updateGemDisplay(gem.name); }); updatePossibleResults(); saveCounts(); alert("All rune and gem counts have been reset to zero."); }
+
+        // --- INITIALIZATION FUNCTION --- (Modified)
+        function initializeTracker() {
+            // Assign DOM elements (including new ones)
+            runeListElement = document.getElementById('rune-list');
+            gemListElement = document.getElementById('gem-list');
+            runewordOutputElement = document.getElementById('runeword-output');
+            upgradeOutputElement = document.getElementById('upgrade-output');
+            cubeRecipeDisplayElement = document.getElementById('cube-recipe-display'); // New
+
+            searchInputElement = document.getElementById('runeword-search');
+            cubeRecipeSearchInputElement = document.getElementById('cube-recipe-search'); // New
+
+            tooltipElement = document.getElementById('rune-tooltip');
+
+            toggleAllUpgradesBtn = document.getElementById('toggle-all-upgrades-btn');
+            toggleAllRunewordsBtn = document.getElementById('toggle-all-runewords-btn');
+            toggleAllCubeRecipesBtn = document.getElementById('toggle-all-cube-recipes-btn'); // New
+
+            inventoryColumnElement = document.getElementById('inventory-column');
+            runewordsColumnElement = document.getElementById('runewords-column');
+            upgradesColumnElement = document.getElementById('upgrades-column');
+            cubeRecipesColumnElement = document.getElementById('cube-recipes-column'); // New
+
+            possibleRunewordsElement = document.getElementById('possible-runewords');
+            possibleUpgradesElement = document.getElementById('possible-upgrades');
+            cubeRecipeOutputElement = document.getElementById('cube-recipe-output'); // New (Container div)
+
+            tabControlsElement = document.querySelector('.tab-controls');
+            upgradesTitleElement = document.getElementById('upgrades-title');
+
+            runewordSortSelectElement = document.getElementById('runeword-sort');
+            runewordItemFilterSelectElement = document.getElementById('runeword-item-filter');
+            cubeRecipeTypeFilterSelectElement = document.getElementById('cube-recipe-type-filter'); // New
+
+            resetButtonElement = document.getElementById('reset-counts-btn');
+
+            runesTabButton = document.getElementById('runes-tab-btn');
+            gemsTabButton = document.getElementById('gems-tab-btn');
+            cubeRecipesTabButton = document.getElementById('cube-recipes-tab-btn'); // New
+
+            runesTabPanel = document.getElementById('rune-list'); // Rune list acts as its own panel
+            gemsTabPanel = document.getElementById('gem-list');   // Gem list acts as its own panel
+            cubeRecipesTabPanel = document.getElementById('cube-recipe-list'); // The new dedicated panel
+
+
+            // Check essential elements
+             const essentialElements = [
+                 runeListElement, gemListElement, runewordOutputElement, upgradeOutputElement, cubeRecipeDisplayElement,
+                 searchInputElement, cubeRecipeSearchInputElement, tooltipElement,
+                 toggleAllUpgradesBtn, toggleAllRunewordsBtn, toggleAllCubeRecipesBtn,
+                 inventoryColumnElement, runewordsColumnElement, upgradesColumnElement, cubeRecipesColumnElement,
+                 possibleRunewordsElement, possibleUpgradesElement, cubeRecipeOutputElement,
+                 tabControlsElement, upgradesTitleElement,
+                 runewordSortSelectElement, runewordItemFilterSelectElement, cubeRecipeTypeFilterSelectElement,
+                 resetButtonElement,
+                 runesTabButton, gemsTabButton, cubeRecipesTabButton,
+                 runesTabPanel, gemsTabPanel, cubeRecipesTabPanel
+             ];
+             if (essentialElements.some(el => !el)) {
+                 console.error("Initialization Error: One or more essential elements not found! Tracker may not function correctly.");
+                 const missingIds = essentialElements
+                    .map((el, index) => el ? null : `Index ${index}`) // Get indices of null elements
+                    .filter(id => id !== null); // Filter out non-nulls
+                 console.error("Missing elements might be at indices (check assignment):", missingIds.join(', '));
+                 // Attempt to list IDs of potentially problematic elements for easier debugging:
+                 console.log("Check IDs like: rune-list, gem-list, runeword-output, upgrade-output, cube-recipe-display, runeword-search, cube-recipe-search, rune-tooltip, toggle-all-upgrades-btn, toggle-all-runewords-btn, toggle-all-cube-recipes-btn, inventory-column, runewords-column, upgrades-column, cube-recipes-column, possible-runewords, possible-upgrades, cube-recipe-output, tab-controls, upgrades-title, runeword-sort, runeword-item-filter, cube-recipe-type-filter, reset-counts-btn, runes-tab-btn, gems-tab-btn, cube-recipes-tab-btn");
+                 return; // Stop initialization if critical elements are missing
+             }
+
+
+            loadCounts();
+            runeListElement.innerHTML = ''; gemListElement.innerHTML = '';
+
+            // Populate Rune Inventory (logic remains the same)
+            let lastRunesFragment = document.createDocumentFragment();
+            const lastRuneNames = ['Jah', 'Cham', 'Zod'];
+            runesData.forEach(rune => {
+                const item = document.createElement('div');
+                item.classList.add('inventory-item', 'rune-item');
+                item.dataset.runeName = rune.name;
+                const currentCount = runeCounts[rune.name] || 0;
+                const imageUrl = runeImageUrls[rune.name];
+                const placeholderUrl = `https://placehold.co/32x32/1a1a1a/c7b377?text=${rune.name.substring(0,2)}`;
+                const nameHtml = imageUrl ? `<img src="${imageUrl}" alt="${rune.name} Rune" class="rune-image" loading="lazy" onerror="this.onerror=null; this.src='${placeholderUrl}'; this.style.imageRendering='auto'; this.style.border='1px solid var(--d2-border-color)';"> ${rune.name}` : rune.name;
+                item.innerHTML = ` <div class="item-name rune-name">${nameHtml}</div> <div class="item-controls"> <button class="item-btn minus" aria-label="Decrement ${rune.name}">-</button> <span class="item-count" id="count-rune-${rune.name}">${currentCount}</span> <button class="item-btn plus" aria-label="Increment ${rune.name}">+</button> </div>`;
+                item.querySelector('.minus').addEventListener('click', () => decrementRune(rune.name));
+                item.querySelector('.plus').addEventListener('click', () => incrementRune(rune.name));
+                item.addEventListener('mouseenter', showRuneTooltip);
+                item.addEventListener('mouseleave', hideRuneTooltip);
+                if (lastRuneNames.includes(rune.name)) { lastRunesFragment.appendChild(item); } else { runeListElement.appendChild(item); }
+            });
+            if (lastRunesFragment.hasChildNodes()) { const lastRowWrapper = document.createElement('div'); lastRowWrapper.className = 'last-rune-row'; lastRowWrapper.appendChild(lastRunesFragment); runeListElement.appendChild(lastRowWrapper); }
+
+            // Populate Gem Inventory (logic remains the same)
+            const gemColumns = {}; gemTypes.forEach(type => { const columnDiv = document.createElement('div'); columnDiv.classList.add('gem-column'); columnDiv.id = `gem-column-${type}`; gemColumns[type] = columnDiv; gemListElement.appendChild(columnDiv); });
+            gemsData.forEach(gem => { const item = document.createElement('div'); item.classList.add('inventory-item', 'gem-item'); const currentCount = gemCounts[gem.name] || 0; const safeId = gem.name.replace(/\s+/g, '-'); const imageUrl = gemImageUrls[gem.name]; const gemShortName = gem.name.replace(/^(Chipped|Flawed|Flawless|Perfect)\s/, ''); const placeholderUrl = `https://placehold.co/32x32/1a1a1a/aaddff?text=${gemShortName.substring(0,2)}`; const imageHtml = imageUrl ? `<img src="${imageUrl}" alt="${gem.name}" class="gem-image" loading="lazy" onerror="this.onerror=null; this.src='${placeholderUrl}'; this.style.imageRendering='auto'; this.style.border='1px solid var(--d2-border-color)';">` : `<span style="color: var(--d2-gem-color); font-size: 0.9em; display: block; margin-top: 1em;">${gem.name}<br>(img missing)</span>`; item.innerHTML = ` <div class="item-name gem-name">${imageHtml}</div> <div class="item-controls"> <button class="item-btn minus" aria-label="Decrement ${gem.name}">-</button> <span class="item-count" id="count-gem-${safeId}">${currentCount}</span> <button class="item-btn plus" aria-label="Increment ${gem.name}">+</button> </div>`; item.querySelector('.minus').addEventListener('click', () => decrementGem(gem.name)); item.querySelector('.plus').addEventListener('click', () => incrementGem(gem.name)); if (gemColumns[gem.type]) { gemColumns[gem.type].appendChild(item); } else { console.warn(`Could not find column for gem type: ${gem.type}. Appending to main list.`); gemListElement.appendChild(item); } });
+
+            // --- NEW: Populate Cube Recipe Type Filter ---
+             const recipeTypes = [...new Set(cubeRecipesData.map(r => r.type))].sort(); // Get unique types and sort
+             recipeTypes.forEach(type => {
+                 if (type) { // Avoid adding undefined/null types
+                     const option = document.createElement('option');
+                     option.value = type;
+                     option.textContent = type;
+                     cubeRecipeTypeFilterSelectElement.appendChild(option);
+                 }
+             });
+
+            // Setup Event Listeners (including new ones)
+            runesTabButton.addEventListener('click', switchTab);
+            gemsTabButton.addEventListener('click', switchTab);
+            cubeRecipesTabButton.addEventListener('click', switchTab); // New listener
+
+            searchInputElement.addEventListener('input', updatePossibleResults);
+            cubeRecipeSearchInputElement.addEventListener('input', updatePossibleResults); // New listener
+
+            resetButtonElement.addEventListener('click', resetAllCounts);
+
+            toggleAllUpgradesBtn.addEventListener('click', toggleUpgradeView);
+            toggleAllRunewordsBtn.addEventListener('click', toggleRunewordView);
+            toggleAllCubeRecipesBtn.addEventListener('click', toggleCubeRecipeView); // New listener
+            // Set initial state for toggle buttons' aria-pressed and text
+            toggleAllUpgradesBtn.setAttribute('aria-pressed', showAllUpgrades);
+            toggleAllUpgradesBtn.textContent = showAllUpgrades ? 'Show Possible' : 'Show All';
+            toggleAllRunewordsBtn.setAttribute('aria-pressed', showAllRunewords);
+             toggleAllRunewordsBtn.textContent = showAllRunewords ? 'Show Possible' : 'Show All';
+            toggleAllCubeRecipesBtn.setAttribute('aria-pressed', showAllCubeRecipes);
+             toggleAllCubeRecipesBtn.textContent = showAllCubeRecipes ? 'Show Have Mats' : 'Show All'; // Updated text logic
+
+            runewordSortSelectElement.addEventListener('change', (event) => { runewordSortCriteria = event.target.value; updatePossibleResults(); });
+            runewordItemFilterSelectElement.addEventListener('change', (event) => { runewordItemFilter = event.target.value; updatePossibleResults(); });
+            cubeRecipeTypeFilterSelectElement.addEventListener('change', (event) => { cubeRecipeTypeFilter = event.target.value; updatePossibleResults(); }); // New listener
+
+            // Initial Setup
+             // Set the first tab (Runes) as active visually and functionally
+             runesTabButton.classList.add('active');
+             runesTabButton.setAttribute('aria-selected', 'true');
+             runesTabButton.removeAttribute('tabindex');
+             runesTabPanel.classList.add('active');
+             runesTabPanel.hidden = false;
+
+             // Ensure other tabs/panels are initially inactive/hidden
+             [gemsTabButton, cubeRecipesTabButton].forEach(btn => {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+                btn.setAttribute('tabindex', '-1');
+             });
+             [gemsTabPanel, cubeRecipesTabPanel].forEach(panel => {
+                 panel.classList.remove('active');
+                 panel.hidden = true;
+             });
+             // Ensure only columns relevant to the initial tab are shown
+             if (runewordsColumnElement) runewordsColumnElement.style.display = ''; // Show
+             if (upgradesColumnElement) upgradesColumnElement.style.display = ''; // Show
+             if (cubeRecipesColumnElement) cubeRecipesColumnElement.style.display = 'none'; // Hide
+
+
+             updatePossibleResults(); // Initial display update
+             let resizeTimeout; window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(adjustColumnHeights, 150); });
+             requestAnimationFrame(adjustColumnHeights); // Initial height adjustment after layout settles
+        }
+
+        // Run Initialization when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', initializeTracker);
+
+    })(); // End of IIFE
+    </script>
+    </body>
+</html>
